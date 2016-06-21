@@ -28,6 +28,6 @@ mkdir -p ~/.vim-tmp
 
 
 echo "Configuring zsh as default shell"
-chsh -s $(which zsh)
+chsh -s /bin/zsh
 
 echo "Done."
