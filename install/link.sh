@@ -55,3 +55,10 @@ else
     echo "Creating symlink for ~/.vimrc"
     ln -s $DOTFILES/config/nvim/init.vim ~/.vimrc
 fi
+
+if [ -e ~/.config/base16-shell ]; then
+    echo "~/.config/base16-shell already exists... skipping"
+else
+    echo "Creating symlink for ~/.config/base16-shell"
+    ln -s $DOTFILES/.config/base16-shell ~/.config/base16-shell
+fi
