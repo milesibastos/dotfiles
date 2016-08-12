@@ -500,7 +500,7 @@ let g:neomake_typescript_tsc_maker = {
 \ }
 
 " autocmd FileType javascript let g:neomake_javascript_enabled_makers = findfile('.jshintrc', '.;') != '' ? ['jshint'] : ['eslint']
-let g:neomake_javascript_enabled_makers = ['jshint', 'jscs']
+" let g:neomake_javascript_enabled_makers = ['jshint', 'jscs']
 
 " CtrlP ignore patterns
 " let g:ctrlp_custom_ignore = {
