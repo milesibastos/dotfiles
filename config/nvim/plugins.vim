@@ -2,6 +2,7 @@ call plug#begin('~/.config/nvim/plugged')
 
 " colorschemes
 Plug 'dracula/vim'
+Plug 'chriskempson/base16-vim'
 
 " utilities
 " Plug 'ctrlpvim/ctrlp.vim' " fuzzy file finder, mapped to <leader>t
