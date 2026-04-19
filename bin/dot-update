@@ -49,6 +49,12 @@ update_homebrew() {
 update_nvim_plugins() {
   fmt_title_underline "Updating Neovim plugins"
 
+  if ! command -v nvim >/dev/null 2>&1; then
+    log_warning "nvim not installed; skipping plugin update."
+    log_info "Run 'dot homebrew bundle' to install Brewfile packages (includes neovim)."
+    return 0
+  fi
+
   local log_file=$(mktemp)
   trap 'rm -f "$log_file"' EXIT
 

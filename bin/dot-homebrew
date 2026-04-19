@@ -32,24 +32,23 @@ homebrew_install() {
 
   if test "$(command -v brew)"; then
     log_info "Homebrew already installed."
-    exit 0
+  else
+    # Run as a login shell (non-interactive) so that the script doesn't pause for user input
+    curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh | bash --login
+
+    log_success "Homebrew installed successfully."
+
+    if [ "$(uname)" == "Linux" ]; then
+      log_info "Setting up Linuxbrew-specific files."
+      test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+      test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
+    fi
   fi
 
-  # Run as a login shell (non-interactive) so that the script doesn't pause for user input
-  curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh | bash --login
-
-  log_success "Homebrew installed successfully."
-
-  if [ "$(uname)" == "Linux" ]; then
-    log_info "Setting up Linuxbrew-specific files."
-    test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
-    test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    test -r ~/.bash_profile && echo "eval \$($(brew --prefix)/bin/brew shellenv)" >>~/.bash_profile
-  fi
-
-  # install brew dependencies from Brewfile
-  brew bundle
-
+  # Always install/update Brewfile packages — reconciles missing formulae
+  # on machines that already had Homebrew from a prior setup.
+  homebrew_bundle
 }
 
 homebrew_bundle() {
