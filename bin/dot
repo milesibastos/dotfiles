@@ -135,6 +135,8 @@ cmd_backup() {
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local backup_path="${backup_dir}/dotfiles_backup_${timestamp}"
 
+  mkdir -p "$backup_dir"
+
   log_info "Creating backup in: $backup_path"
 
   files_to_backup=(
@@ -180,7 +182,7 @@ cmd_backup() {
       echo "$file" >>"$tmpfile"
       [[ "$verbose" == true ]] && log_info "Found: $file"
     else
-      log_warning "File not found: $src_path"
+      [[ "$verbose" == true ]] && log_warning "File not found: $src_path"
     fi
   done
 
