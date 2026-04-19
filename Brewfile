@@ -3,12 +3,9 @@
 tap 'homebrew/bundle'
 
 if OS.mac?
-  tap 'FelixKratz/formulae' # For janky borders
-
-  # taps
-  brew 'noti'                          # utility to display notifications from scripts
-  brew 'trash'                         # rm, but put in the trash rather than completely delete
-  brew 'borders'                       # add borders to windows
+  brew 'noti'                              # utility to display notifications from scripts
+  brew 'trash'                             # rm, but put in the trash rather than completely delete
+  brew 'FelixKratz/formulae/borders'       # add borders to windows (janky-borders)
 
   # Applications
   cask 'ghostty'                       # a better terminal emulator
