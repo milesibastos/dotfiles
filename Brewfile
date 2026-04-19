@@ -52,6 +52,7 @@ brew 'lazygit'                         # a better git UI
 brew 'neovim'                          # A better vim
 brew 'python'                          # python (latest)
 brew 'ripgrep'                         # very fast file searcher
+brew 'rust'                            # Rust toolchain (cargo) — needed to build sniprun
 brew 'shellcheck'                      # diagnostics for shell sripts
 brew 'stylua'                          # lua code formatter
 brew 'tmux'                            # terminal multiplexer
