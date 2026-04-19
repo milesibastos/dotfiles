@@ -11,6 +11,11 @@ command_name=$(basename "${BASH_SOURCE[0]}")
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
+# Derive DOTFILES from script location if caller hasn't exported it yet
+# (needed for first-run, before symlinks and .zshenv are in place).
+: "${DOTFILES:=$(cd "$script_dir/.." &>/dev/null && pwd -P)}"
+export DOTFILES
+
 if [[ -f "$DOTFILES/bin/lib/common.sh" ]]; then
   source "$DOTFILES/bin/lib/common.sh"
 else
@@ -221,6 +226,7 @@ do_link() {
     printf "  ${YELLOW}⚠ %-20s${RESET} ${DIM}exists (not a symlink)${RESET}\n" "$label"
     STAT_SKIPPED=$((STAT_SKIPPED + 1))
   else
+    mkdir -p "$(dirname "$target")"
     ln -s "$src" "$target"
     printf "  ${GREEN}+ %-20s${RESET} ${DIM}→ %s${RESET}\n" "$label" "$display"
     STAT_LINKED=$((STAT_LINKED + 1))

@@ -74,15 +74,15 @@ case $1 in
     plugins[$name]=$dest
 
     if [[ ! -d $dest ]]; then
-      local url=git@github.com:$name
+      local url="https://github.com/$name.git"
       local ref=$3
       echo -e "Missing plugin ${Yel}${name}${Rst}"
       echo -e "  Cloning from ${Blu}${url}${Rst}..."
 
-      local clone_cmd="git clone --quiet"
-      [[ -z $ref ]] && clone_cmd+=" --depth 1"
+      local -a clone_args=(--quiet)
+      [[ -z $ref ]] && clone_args+=(--depth 1)
 
-      if $clone_cmd $url $dest; then
+      if git clone "${clone_args[@]}" "$url" "$dest"; then
         if [[ -n $ref ]]; then
           (cd $dest && git checkout --quiet $ref)
           echo -e "  Checked out branch ${ref}"
