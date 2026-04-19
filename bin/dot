@@ -50,6 +50,7 @@ $(fmt_key "Available Commands:")
         clean                     Remove broken symlinks
             -n, --dry-run         Preview without removing
     unlink [pkg]                  Unlink packages (default: all)
+    bootstrap                     Post-link fixes (compaudit perms, terminfo)
 EOF
 
   echo -e "\nExternal commands:"
@@ -200,6 +201,56 @@ cmd_backup() {
   else
     log_warning "No files to backup"
   fi
+}
+
+# ── Bootstrap (post-link fixes) ─────────────────────────────────
+
+cmd_bootstrap() {
+  printf "\n  ${BOLD}dot bootstrap${RESET}\n\n"
+
+  # 1. Fix zsh compinit 'insecure directories' by stripping group/world write.
+  printf "  ${BOLD}zsh completion perms${RESET}\n"
+  if command -v zsh >/dev/null 2>&1; then
+    local insecure
+    insecure=$(zsh -c 'autoload -Uz compaudit && compaudit 2>/dev/null' || true)
+    if [[ -n "$insecure" ]]; then
+      local fixed=0
+      while IFS= read -r path; do
+        [[ -e "$path" ]] || continue
+        if chmod g-w,o-w "$path" 2>/dev/null; then
+          fixed=$((fixed + 1))
+        fi
+      done <<<"$insecure"
+      printf "  ${GREEN}+ fixed %d path(s)${RESET}\n" "$fixed"
+    else
+      printf "  ${DIM}· no insecure dirs${RESET}\n"
+    fi
+  else
+    printf "  ${DIM}· zsh not found, skipping${RESET}\n"
+  fi
+
+  # 2. Install xterm-ghostty terminfo if missing.
+  printf "\n  ${BOLD}ghostty terminfo${RESET}\n"
+  if infocmp xterm-ghostty >/dev/null 2>&1; then
+    printf "  ${DIM}· already installed${RESET}\n"
+  else
+    local ghostty_ti="/Applications/Ghostty.app/Contents/Resources/terminfo"
+    if [[ -d "$ghostty_ti" ]]; then
+      mkdir -p "$HOME/.terminfo"
+      cp -R "$ghostty_ti"/* "$HOME/.terminfo/"
+      if infocmp xterm-ghostty >/dev/null 2>&1; then
+        printf "  ${GREEN}+ installed to ~/.terminfo${RESET}\n"
+      else
+        printf "  ${YELLOW}⚠ copied files but infocmp still can't find it${RESET}\n"
+      fi
+    else
+      printf "  ${YELLOW}⚠ Ghostty.app not at %s${RESET}\n" "$ghostty_ti"
+      printf "  ${DIM}  install Ghostty, or run: infocmp -x xterm-ghostty | tic -x -${RESET}\n"
+    fi
+  fi
+
+  printf "\n"
+  log_success "Bootstrap complete."
 }
 
 # ── Symlink helpers ──────────────────────────────────────────────
@@ -452,6 +503,9 @@ main() {
     ;;
   unlink)
     cmd_link "unlink" "$@"
+    ;;
+  bootstrap)
+    cmd_bootstrap "$@"
     ;;
   *)
     if command -v "dot-$cmd" >/dev/null 2>&1; then
