@@ -25,6 +25,7 @@ Options:
     homebrew, brew       Update Homebrew packages
     dotfiles             Update dotfiles
     zsh                  Update Zsh plugins
+    claude               Install or update Claude Code (native installer)
     all                  Update everything
 EOF
 }
@@ -125,6 +126,51 @@ update_dotfiles() {
   fi
 }
 
+update_claude_code() {
+  fmt_title_underline "Updating Claude Code"
+
+  if command -v claude >/dev/null 2>&1; then
+    # Already installed — self-update via the bundled `claude update` subcommand
+    local log_file
+    log_file=$(mktemp)
+    trap 'rm -f "$log_file"' EXIT
+
+    if run_with_spinner "claude update > '$log_file' 2>&1" 11 "Updating Claude Code"; then
+      # Success: show the last line or two (version/status)
+      tail -3 "$log_file" | sed '/^\s*$/d'
+    else
+      log_error "claude update failed:"
+      cat "$log_file"
+      return 1
+    fi
+  else
+    # First-run: fetch Anthropic's installer, checksum-sanity-check, execute.
+    log_info "Claude Code not installed; running Anthropic's native installer"
+    local installer
+    installer=$(mktemp -t claude-install.XXXXXX)
+    trap 'rm -f "$installer"' EXIT
+
+    if ! curl -fsSL -o "$installer" https://claude.ai/install.sh; then
+      log_error "Failed to download installer from https://claude.ai/install.sh"
+      return 1
+    fi
+
+    # Quick sanity check: must start with a bash shebang.
+    if ! head -1 "$installer" | grep -q '^#!/bin/bash'; then
+      log_error "Downloaded installer is not a bash script; aborting"
+      return 1
+    fi
+
+    if bash "$installer"; then
+      log_success "Claude Code installed"
+    else
+      log_error "Installer failed"
+      return 1
+    fi
+  fi
+  echo -e
+}
+
 update_zsh_plugins() {
   fmt_title_underline "Updating ZSH plugins..."
   echo -e
@@ -195,11 +241,15 @@ main() {
   zsh)
     update_zsh_plugins
     ;;
+  claude | claude-code)
+    update_claude_code
+    ;;
   all)
     update_nvim_plugins
     update_homebrew
     update_zsh_plugins
     update_dotfiles
+    update_claude_code
     ;;
   *)
     log_error "Unknown $command_name command: $subcmd"
