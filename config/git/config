@@ -180,3 +180,12 @@
 [rebase]
     instructionFormat = "[%an - %ar] %s"
     autoStash = true
+[credential "https://github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[user]
+	name = @milesibastos
+	email = antonio@milesibastos.com
