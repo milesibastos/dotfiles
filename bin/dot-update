@@ -32,15 +32,33 @@ EOF
 
 update_homebrew() {
   fmt_title_underline "Updating Homebrew packages"
-  local log_file=$(mktemp)
+
+  if ! command -v brew >/dev/null 2>&1; then
+    log_warning "brew not found; skipping"
+    return 0
+  fi
+
+  # Homebrew on macOS is owned by a single admin user; other local users
+  # (e.g. isolated workspace accounts) can read it but not brew update/upgrade.
+  # Detect and skip instead of exploding with 'Cellar is not writable'.
+  local cellar
+  cellar="$(brew --cellar 2>/dev/null)"
+  if [[ -n "$cellar" && ! -w "$cellar" ]]; then
+    log_warning "Homebrew Cellar is not writable by $(whoami); skipping"
+    log_info "  run 'bin/dot update brew' from the admin user who installed Homebrew"
+    return 0
+  fi
+
+  local log_file
+  log_file=$(mktemp)
   trap 'rm -f "$log_file"' EXIT
 
-  run_with_spinner "brew update > '$log_file' 2>&1 && brew upgrade > '$log_file' 2>&1" 11 "Updating Homebrew"
+  run_with_spinner "brew update > '$log_file' 2>&1 && brew upgrade >> '$log_file' 2>&1" 11 "Updating Homebrew"
 
   if grep -q "Error\|fatal\|Failed" "$log_file"; then
     log_error "Error occurred during update:"
-    [[ "$verbose" == true ]] && cat "$log_file"
-    exit 1
+    cat "$log_file"
+    return 1
   fi
 
   grep -A1 "=>" "$log_file" | grep -v "^--$" || log_info "No updates found"
@@ -68,7 +86,7 @@ update_nvim_plugins() {
     echo "───────── nvim log ─────────"
     cat "$log_file"
     echo "────────────────────────────"
-    exit 1
+    return 1
   fi
 
   grep -i "updated\|installed\|removed" "$log_file" || log_info "No updates found"
@@ -245,11 +263,16 @@ main() {
     update_claude_code
     ;;
   all)
-    update_nvim_plugins
-    update_homebrew
-    update_zsh_plugins
-    update_dotfiles
-    update_claude_code
+    local failures=()
+    update_nvim_plugins || failures+=("nvim")
+    update_homebrew     || failures+=("homebrew")
+    update_zsh_plugins  || failures+=("zsh")
+    update_dotfiles     || failures+=("dotfiles")
+    update_claude_code  || failures+=("claude")
+    if [ "${#failures[@]}" -gt 0 ]; then
+      log_warning "Some updates failed: ${failures[*]}"
+      exit 1
+    fi
     ;;
   *)
     log_error "Unknown $command_name command: $subcmd"
