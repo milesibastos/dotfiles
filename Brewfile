@@ -32,6 +32,7 @@ brew 'grep'                            # grep
 
 # packages
 brew 'bat'                             # better cat
+brew 'cmake'                           # needed to build telescope-fzf-native.nvim
 brew 'cloc'                            # lines of code counter
 brew 'entr'                            # file watcher / command runner
 brew 'eza'                             # ls alternative
