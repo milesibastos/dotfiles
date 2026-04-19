@@ -1,6 +1,7 @@
 # vim:ft=ruby
 
-tap 'homebrew/bundle'
+# NOTE: homebrew/bundle tap was deprecated in 2025 — `brew bundle` is now
+# built into Homebrew core, no tap required.
 
 if OS.mac?
   brew 'noti'                              # utility to display notifications from scripts
