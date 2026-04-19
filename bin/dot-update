@@ -51,7 +51,7 @@ update_homebrew() {
 
   local log_file
   log_file=$(mktemp)
-  trap 'rm -f "$log_file"' EXIT
+  trap 'rm -f "${log_file:-}"' EXIT
 
   run_with_spinner "brew update > '$log_file' 2>&1 && brew upgrade >> '$log_file' 2>&1" 11 "Updating Homebrew"
 
@@ -75,7 +75,7 @@ update_nvim_plugins() {
   fi
 
   local log_file=$(mktemp)
-  trap 'rm -f "$log_file"' EXIT
+  trap 'rm -f "${log_file:-}"' EXIT
 
   # Use run_with_spinner helper with style 11 (complex braille pattern)
   run_with_spinner "nvim --headless '+Lazy! sync' +qa > '$log_file' 2>&1" 11 "Updating Neovim plugins"
@@ -104,7 +104,7 @@ update_dotfiles() {
 
   local log_file=$(mktemp)
 
-  trap 'rm -f "$log_file"' EXIT
+  trap 'rm -f "${log_file:-}"' EXIT
 
   # Fetch updates with spinner
   run_with_spinner "git -C '$DOTFILES' fetch --quiet origin main > '$log_file' 2>&1" 11 "Checking for dotfiles updates"
@@ -151,7 +151,7 @@ update_claude_code() {
     # Already installed — self-update via the bundled `claude update` subcommand
     local log_file
     log_file=$(mktemp)
-    trap 'rm -f "$log_file"' EXIT
+    trap 'rm -f "${log_file:-}"' EXIT
 
     if run_with_spinner "claude update > '$log_file' 2>&1" 11 "Updating Claude Code"; then
       # Success: show the last line or two (version/status)
@@ -166,7 +166,7 @@ update_claude_code() {
     log_info "Claude Code not installed; running Anthropic's native installer"
     local installer
     installer=$(mktemp -t claude-install.XXXXXX)
-    trap 'rm -f "$installer"' EXIT
+    trap 'rm -f "${installer:-}"' EXIT
 
     if ! curl -fsSL -o "$installer" https://claude.ai/install.sh; then
       log_error "Failed to download installer from https://claude.ai/install.sh"
