@@ -3,6 +3,10 @@
 
 set -Eeuo pipefail
 
+# Derive DOTFILES from script location when unset (first-run / isolated shells)
+: "${DOTFILES:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd -P)}"
+export DOTFILES
+
 # source helpers
 source "$DOTFILES/bin/lib/common.sh"
 command_name=$(basename "${BASH_SOURCE[0]}")
