@@ -62,9 +62,11 @@ update_nvim_plugins() {
   run_with_spinner "nvim --headless '+Lazy! sync' +qa > '$log_file' 2>&1" 11 "Updating Neovim plugins"
 
   # Check for errors
-  if grep -q "Error\|ERROR\|Could not\|not installed" "$log_file"; then
-    echo "Error occurred during update:"
-    rm -f "$log_file"
+  if grep -q "^Error\|^ERROR\|Could not\|not installed" "$log_file"; then
+    log_error "Error occurred during update:"
+    echo "───────── nvim log ─────────"
+    cat "$log_file"
+    echo "────────────────────────────"
     exit 1
   fi
 

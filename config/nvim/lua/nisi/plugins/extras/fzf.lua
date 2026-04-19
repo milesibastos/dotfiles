@@ -1,7 +1,24 @@
+local function homebrew_prefix()
+  if vim.env.HOMEBREW_PREFIX and vim.env.HOMEBREW_PREFIX ~= "" then
+    return vim.env.HOMEBREW_PREFIX
+  end
+  if vim.fn.executable("brew") == 1 then
+    local out = vim.fn.system({ "brew", "--prefix" })
+    if vim.v.shell_error == 0 then
+      return (out:gsub("%s+$", ""))
+    end
+  end
+  -- Fallbacks: Apple silicon, Intel Mac, Linuxbrew
+  for _, p in ipairs({ "/opt/homebrew", "/usr/local", "/home/linuxbrew/.linuxbrew" }) do
+    if vim.fn.isdirectory(p) == 1 then return p end
+  end
+  return "/opt/homebrew"
+end
+
 return {
   {
     "junegunn/fzf.vim",
-    dependencies = { { dir = vim.env.HOMEBREW_PREFIX .. "/opt/fzf" } },
+    dependencies = { { dir = homebrew_prefix() .. "/opt/fzf" } },
     config = function()
       -- Insert mode completion
       vim.keymap.set("i", "<c-x><c-k>", "<plug>(fzf-complete-word)", { remap = true })
