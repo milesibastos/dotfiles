@@ -10,8 +10,12 @@ source "$ZDOTDIR/.zsh_functions"
 ########################################################
 
 # initialize autocomplete
+# -u: trust fpath dirs even when compaudit flags them. On a personal
+# laptop /opt/homebrew is owned by the installing admin user, which
+# compaudit rejects for every other local user; the strict check is
+# only meaningful on multi-tenant systems.
 autoload -U compinit add-zsh-hook
-compinit
+compinit -u
 
 # setup PATH
 for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin; do

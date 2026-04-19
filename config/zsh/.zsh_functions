@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 
-autoload -Uz compinit
-compinit
+# compinit is invoked by .zshrc after this file is sourced; don't duplicate it.
 
 # directory navigation functions with completion
 for func dir in c '$CODE_DIR' h '$HOME'; do
