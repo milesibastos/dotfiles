@@ -90,13 +90,27 @@ update_dotfiles() {
   # Fetch updates with spinner
   run_with_spinner "git -C '$DOTFILES' fetch --quiet origin main > '$log_file' 2>&1" 11 "Checking for dotfiles updates"
 
-  # Compare local with remote
+  # Compare local with remote using merge-base to distinguish
+  # up-to-date / ahead / behind / diverged.
   local_rev=$(git -C "$DOTFILES" rev-parse HEAD)
-  remote_rev=$(git -C "$DOTFILES" rev-parse "@{u}" 2>/dev/null)
+  remote_rev=$(git -C "$DOTFILES" rev-parse "@{u}" 2>/dev/null || true)
+  if [ -z "$remote_rev" ]; then
+    log_warning "No upstream configured for current branch; skipping"
+    return 0
+  fi
+  base=$(git -C "$DOTFILES" merge-base HEAD "@{u}")
 
   if [ "$local_rev" = "$remote_rev" ]; then
     log_info "Dotfiles are up to date"
     return 0
+  elif [ "$base" = "$remote_rev" ]; then
+    local ahead
+    ahead=$(git -C "$DOTFILES" rev-list --count "@{u}..HEAD")
+    log_info "Local is ahead of origin by $ahead commit(s); nothing to pull"
+    return 0
+  elif [ "$base" != "$local_rev" ]; then
+    log_warning "Local and origin have diverged; resolve manually"
+    return 1
   fi
 
   echo "Updates available:"
