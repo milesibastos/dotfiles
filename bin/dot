@@ -228,6 +228,25 @@ cmd_backup() {
 cmd_bootstrap() {
   printf "\n  ${BOLD}dot bootstrap${RESET}\n\n"
 
+  # 0. Create directories .zshrc's prepend_path helper only adds when they
+  #    already exist. Otherwise the first shell after 'dot link' doesn't
+  #    put ~/.local/bin on PATH and user-installed tools (Claude, etc.)
+  #    appear 'command not found' until the next exec zsh -l.
+  printf "  ${BOLD}user bin directories${RESET}\n"
+  local created=0
+  for d in "$HOME/.local/bin" "$HOME/bin"; do
+    if [[ ! -d "$d" ]]; then
+      mkdir -p "$d"
+      created=$((created + 1))
+    fi
+  done
+  if [[ $created -gt 0 ]]; then
+    printf "  ${GREEN}+ created %d dir(s)${RESET}\n" "$created"
+  else
+    printf "  ${DIM}· already exist${RESET}\n"
+  fi
+  echo
+
   # 1. Fix zsh compinit 'insecure directories' by stripping group/world write.
   printf "  ${BOLD}zsh completion perms${RESET}\n"
   if command -v zsh >/dev/null 2>&1; then
