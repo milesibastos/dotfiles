@@ -24,15 +24,30 @@ else
 fi
 
 find_commands() {
+  # Always search our own directory (sibling dot-* scripts) plus $PATH,
+  # so external commands work even when $DOTFILES/bin isn't on PATH
+  # (e.g., running from fish where .zshrc hasn't prepended it).
+  local -a search_dirs=("$script_dir")
   IFS=: read -ra path_dirs <<<"$PATH"
-  for dir in "${path_dirs[@]}"; do
-    # skip if the directory doesn't exist or isn't readable
+  search_dirs+=("${path_dirs[@]}")
+  for dir in "${search_dirs[@]}"; do
     [[ ! -d "$dir" ]] && continue
     for cmd in "$dir"/dot-*; do
       [[ -f "$cmd" && -x "$cmd" ]] || continue
       basename "$cmd" | sed 's/^dot-//'
     done
   done | sort -u
+}
+
+# Resolve a 'dot-<name>' external command: prefer sibling script, fall
+# back to $PATH. Prints the absolute path on success, nothing on miss.
+resolve_command() {
+  local name="$1"
+  if [[ -x "$script_dir/dot-$name" ]]; then
+    printf '%s\n' "$script_dir/dot-$name"
+  elif command -v "dot-$name" >/dev/null 2>&1; then
+    command -v "dot-$name"
+  fi
 }
 
 usage() {
@@ -57,7 +72,10 @@ EOF
 
   find_commands | while read -r cmd; do
     # Get the description from the script if available
-    description=$(grep "^# Description:" "$(which "dot-$cmd")" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//' || echo "No description available")
+    local cmd_path
+    cmd_path=$(resolve_command "$cmd")
+    description=$(grep "^# Description:" "$cmd_path" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//' || echo "No description available")
+    [[ -z "$description" ]] && description="No description available"
     printf "    $(fmt_cmd "%-12s") %s\n" "$cmd" "$description"
   done
 }
@@ -510,8 +528,9 @@ main() {
     cmd_bootstrap "$@"
     ;;
   *)
-    if command -v "dot-$cmd" >/dev/null 2>&1; then
-      "dot-$cmd" "$@"
+    resolved=$(resolve_command "$cmd")
+    if [[ -n "$resolved" ]]; then
+      "$resolved" "$@"
     else
       log_error "Unknown command: $cmd"
       usage
