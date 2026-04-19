@@ -9,14 +9,6 @@ return {
       suggestion = {
         enabled = false,
         auto_trigger = true,
-        keymap = {
-          accept = "<Tab>",
-          close = "<Esc>",
-          next = "<C-J>",
-          prev = "<C-K>",
-          select = "<CR>",
-          dismiss = "<C-X>",
-        },
       },
       panel = {
         enabled = false,

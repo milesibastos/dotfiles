@@ -82,6 +82,7 @@ return {
         },
         filetype = "blade",
       }
+      parser_config.jsonc.install_info.revision = "main"
 
       vim.filetype.add({
         pattern = {
