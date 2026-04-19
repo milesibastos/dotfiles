@@ -14,7 +14,10 @@ if OS.mac?
   cask '1password/tap/1password-cli'   # 1Password CLI
   cask 'karabiner-elements'            # keyboard customizer
   cask 'nikitabobko/tap/aerospace'     # a tiling window manager
-  cask 'claude-code'                   # Claude AI CLI
+  # claude-code: managed by Anthropic's native installer, not Homebrew
+  # (cask version lags upstream by many releases). Install with:
+  #   curl -fsSL https://claude.ai/install.sh | bash
+  # `claude update` handles future updates.
 
   # Fonts
   cask 'font-symbols-only-nerd-font'   # nerd-only symbols font
