@@ -5,7 +5,3 @@ Challenge my assumptions and reasoning. Offer skeptical viewpoints. Correct me p
 Be extremely concise. Sacrifice grammar for the sake of concision.
 
 Codex will review your output once you are done.
-
-## Plugin Config
-
-ideation-output: /Users/nicknisi/Notes/!Ideation
