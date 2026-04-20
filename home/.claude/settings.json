@@ -191,7 +191,13 @@
     "command": "claude-statusline"
   },
   "enabledPlugins": {
-    "codex@openai-codex": true
+    "codex@openai-codex": true,
+    "frontend-design@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "chrome-devtools-mcp@claude-plugins-official": true,
+    "ruby-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "openai-codex": {
@@ -363,10 +369,10 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
+  "advisorModel": "opus",
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "defaultMode": "auto",
-  "teammateMode": "tmux",
-  "advisorModel": "opus"
+  "teammateMode": "tmux"
 }
