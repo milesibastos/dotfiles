@@ -31,6 +31,8 @@ brew 'git'                             # Git version control
 brew 'vim'                             # Vim editor
 brew 'bash'                            # bash shell
 brew 'zsh'                             # zsh shell
+brew 'fish'                            # fish shell (default interactive shell)
+brew 'starship'                        # cross-shell prompt
 brew 'grep'                            # grep
 
 # packages
