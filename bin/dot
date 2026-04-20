@@ -288,6 +288,25 @@ cmd_bootstrap() {
     fi
   fi
 
+  # 3. Ensure fnm has a default node installed. Claude Code plugin hooks
+  #    (e.g. openai-codex Stop hook) shell out to `node`; without a default,
+  #    first-session hooks fail with "node: command not found".
+  printf "\n  ${BOLD}node toolchain${RESET}\n"
+  if command -v fnm >/dev/null 2>&1; then
+    if fnm current 2>/dev/null | grep -qvE '^(none|system)$'; then
+      printf "  ${DIM}· fnm default: %s${RESET}\n" "$(fnm current)"
+    else
+      printf "  ${DIM}· installing lts via fnm...${RESET}\n"
+      if fnm install --lts >/dev/null 2>&1 && fnm default lts-latest >/dev/null 2>&1; then
+        printf "  ${GREEN}+ fnm default → %s${RESET}\n" "$(fnm current 2>/dev/null || echo lts)"
+      else
+        printf "  ${YELLOW}⚠ fnm install failed — run 'fnm install --lts && fnm default lts-latest' manually${RESET}\n"
+      fi
+    fi
+  else
+    printf "  ${YELLOW}⚠ fnm not found — install via 'brew install fnm' then re-run bootstrap${RESET}\n"
+  fi
+
   printf "\n"
   log_success "Bootstrap complete."
 }
