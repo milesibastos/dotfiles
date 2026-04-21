@@ -48,6 +48,7 @@ command -q fnm; and fnm env --use-on-cd --shell fish | source
 command -q zoxide; and zoxide init fish --hook pwd | source
 command -q fzf; and fzf --fish | source
 command -q pyenv; and pyenv init - fish | source
+command -q rbenv; and rbenv init - --no-rehash fish | source
 test -x "$HOME/.local/bin/mise"; and $HOME/.local/bin/mise activate fish | source
 
 # fzf defaults

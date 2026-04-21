@@ -167,6 +167,13 @@ if command -v pyenv &>/dev/null; then
   eval "$(pyenv init -)"
 fi
 
+# rbenv: interactive shells pick up .ruby-version. `.zprofile` only runs in
+# login shells, so non-login tools (editors, CLI runners) miss it — init here
+# too. Idempotent.
+if [[ -x "$(command -v rbenv)" ]]; then
+  eval "$(rbenv init - --no-rehash zsh)"
+fi
+
 # mise: per-directory tool version switching (interactive shells)
 # For cron/scripts, set PATH=$HOME/.local/share/mise/shims:... in the crontab
 # or use `mise exec -- <cmd>` directly.

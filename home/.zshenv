@@ -29,6 +29,11 @@ fpath=(
 
 typeset -aU path
 
+# rbenv: shim PATH must be available in non-interactive shells too (editors,
+# CLI tool subshells, Claude Code `!` runner). `.zshrc` only runs for
+# interactive shells; .zshenv runs for all zsh invocations.
+[[ -d "$HOME/.rbenv/shims" ]] && path=("$HOME/.rbenv/shims" $path)
+
 export EDITOR='nvim'
 export GIT_EDITOR='nvim'
 
