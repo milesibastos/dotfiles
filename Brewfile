@@ -47,6 +47,8 @@ brew 'gum'                             # fancy UI utilities
 brew 'rbenv'                           # Ruby version manager
 brew 'fzf'                             # Fuzzy file searcher, used in scripts and in vim
 brew 'gh'                              # GitHub CLI
+brew 'tea'                             # Gitea CLI
+brew 'bitwarden-cli'                   # Bitwarden CLI (bw)
 brew 'git-delta'                       # a better git diff
 brew 'glow'                            # markdown viewer
 brew 'gnupg'                           # GPG
