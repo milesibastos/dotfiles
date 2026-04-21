@@ -1,8 +1,13 @@
 # tea Cheat Sheet
 
 [`tea`](https://gitea.com/gitea/tea) — the official CLI for Gitea.
-Mirrors most of `gh`'s workflow (issues, PRs, repos, releases, notifications)
-but talks to any Gitea instance.
+Mirrors much of `gh`'s workflow (issues, PRs, repos, releases,
+notifications) but talks to any Gitea instance.
+
+> **Scope:** `tea` is an **API client only**. It does **not** configure
+> git's credentials — `git fetch/push` over HTTPS still needs its own
+> credential helper (`osxkeychain`, a custom helper, or SSH). See
+> [Separate from git auth](#separate-from-git-auth) below.
 
 ## Install
 
@@ -12,49 +17,117 @@ brew install tea
 
 (also added to the Brewfile in this repo).
 
-## 1. Create a token on your Gitea instance
+## 1. Get a token
 
-Web UI → avatar menu → **Settings** → **Applications** → **Generate New Token**.
+You have three paths. Recommendation: **path B** — you control name +
+scopes and get the token back exactly once.
 
-Scopes needed for full CLI use:
-- `read:user`
-- `write:repository`
-- `write:issue`
-- `write:notification` (optional)
+### A. Web UI
 
-Copy the token **immediately** — Gitea only shows it once.
+Avatar menu → **Settings** → **Applications** → **Generate New Token**.
+Copy it immediately. Gitea only shows it once.
 
-## 2. Log in
+### B. Gitea API via curl (scripted, explicit scopes)
+
+```bash
+curl -u milesibastos -X POST \
+  https://gitea.dransay.ai/api/v1/users/milesibastos/tokens \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "name": "laptop-2026-04",
+        "scopes": ["write:repository", "read:user", "write:issue"]
+      }' \
+  | jq -r .sha1
+```
+
+The `sha1` field is the token (`gto_…`). Stash in pass:
+
+```bash
+printf 'gto_xxxx\n' | pass insert -e gitea/dransay-token
+```
+
+### C. Side-effect of `tea login add --user --password`
+
+When you log in with basic-auth credentials, `tea` calls the token API
+itself and stores the result. Simplest if you're already setting up
+a login, but no control over name or scopes.
 
 ```bash
 tea login add \
-  --name work \
-  --url https://git.example.com \
-  --token gto_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  --name dransay \
+  --url https://gitea.dransay.ai \
+  --user milesibastos \
+  --password "$(pass show gitea/dransay)"
 ```
 
-`--name` is a short local alias (e.g. `work`, `home`). You can register
-multiple Gitea instances and switch between them.
+The token tea just minted is now in `~/.config/tea/config.yml`.
 
-Verify:
+**Scopes reference (Gitea 1.19+):** `read:admin`, `write:admin`,
+`read:organization`, `write:organization`, `read:repository`,
+`write:repository`, `read:user`, `write:user`, `read:issue`,
+`write:issue`, `read:notification`, `write:notification`, `read:misc`,
+`write:misc`, `read:package`, `write:package`, `read:activitypub`,
+`write:activitypub`.
+
+For a general-purpose dev token: `write:repository`, `read:user`,
+`write:issue`, `write:notification`.
+
+## 2. Log in with a token (preferred)
 
 ```bash
-tea login list
-tea login default work      # make `work` the default for future calls
+tea login add \
+  --name dransay \
+  --url https://gitea.dransay.ai \
+  --token "$(pass show gitea/dransay-token)"
 ```
 
-Config lives at `~/.config/tea/config.yml` (plaintext, with token — keep
-perms at `600`).
+`--name` is a short local alias. You can register multiple Gitea
+instances and switch between them.
 
-## 3. Clone + per-repo login detection
+### Common `tea login add` errors
 
-When you `cd` into a repo whose `origin` matches a logged-in Gitea URL,
-`tea` auto-selects that login. Otherwise pass `--login <name>` explicitly.
+| Error | Cause |
+|---|---|
+| `Error: no password set` | Passed `--user` without `--password`. `tea` doesn't prompt — either add `--password "$(pass show …)"` or switch to `--token`. |
+| `401 Unauthorized` | Token invalid/revoked/scoped too narrowly. |
+| `x509: certificate signed by unknown authority` | Self-signed TLS. Add `--insecure` or trust the CA system-wide. |
+| `SSH host: (empty)` warning | Gitea didn't advertise an SSH endpoint. See [SSH setup](#ssh-vs-https). |
+
+### Verify
 
 ```bash
-tea clone owner/repo                    # clones from default login
-tea clone --login work owner/repo       # force a specific login
+tea login list        # columns: NAME, URL, SSH HOST, USER, DEFAULT
+tea login default dransay
 ```
+
+Config lives at `~/.config/tea/config.yml` (**plaintext**, token
+included). `chmod 600 ~/.config/tea/config.yml`.
+
+## 3. Cloning
+
+```bash
+tea repo clone owner/repo                # HTTPS clone from default login
+tea repo clone owner/repo target-dir
+tea repo clone --login dransay owner/repo
+tea repo clone --ssh owner/repo          # SSH URL instead
+tea repo clone --depth 1 owner/repo      # shallow
+```
+
+`tea clone …` is accepted as a shorter alias.
+
+### SSH vs HTTPS
+
+`tea` displays whichever URL the Gitea instance is configured to
+advertise. `--ssh` forces SSH, but only works if:
+
+1. The server actually exposes SSH (port 22 or equivalent).
+2. You've added a key at `https://<instance>/user/settings/keys`.
+3. `ssh -T git@<instance>` succeeds.
+
+K8s-hosted Gitea often ships with HTTP ingress only — SSH needs its
+own `Service` of type `LoadBalancer` / `NodePort`. If `ssh -T` gets
+`Connection refused`, that's why. Fix on the server side, or stick
+with HTTPS + credential helper.
 
 ## Day-to-day commands
 
@@ -84,6 +157,12 @@ tea release create v1.0.0 --note "First release"
 # Notifications (unified inbox across all logged-in instances)
 tea notifications
 tea notifications --all
+
+# Tokens (manage via API, not tea itself)
+curl -u milesibastos https://gitea.dransay.ai/api/v1/users/milesibastos/tokens \
+  | jq '.[] | {id, name, scopes}'
+curl -u milesibastos -X DELETE \
+  https://gitea.dransay.ai/api/v1/users/milesibastos/tokens/<id-or-name>
 ```
 
 ## Output formatting
@@ -94,37 +173,68 @@ Every list command takes `--output` for scripting:
 tea issues --output json | jq '.[] | .title'
 tea issues --output csv
 tea issues --output yaml
+tea repos list --output simple | fzf | xargs tea repo clone
 ```
 
 ## Multi-instance workflow
 
 ```bash
-tea login add --name home --url https://gitea.home.lan --token gto_...
+tea login add --name home --url https://gitea.home.lan \
+  --token "$(pass show gitea/home-token)"
 tea login list                          # see both
 tea --login home issues                 # explicit target
 tea login default home                  # change default
 ```
 
+Auto-selection: inside a repo whose `origin` host matches a login URL,
+`tea` picks that login.
+
+## Separate from git auth
+
+`tea` logging in does **not** authenticate `git fetch/push`. They use
+independent credential stacks:
+
+| Need | Used by |
+|---|---|
+| `~/.config/tea/config.yml` (token) | `tea` REST calls only |
+| `git-credential-osxkeychain` / `credential.helper` | `git push/fetch` over HTTPS |
+| `~/.ssh/id_*` + ssh-agent | `git push/fetch` over SSH |
+
+Pair `tea` with **one** of:
+
+- **SSH** (cleanest): add key to Gitea → `git remote set-url origin git@host:owner/repo.git`.
+- **macOS Keychain for HTTPS**: `git config --global credential.helper osxkeychain`; fetch once with username + PAT as password.
+- **DIY helper that pulls from `pass`**:
+  ```bash
+  cat > ~/.local/bin/git-credential-gitea <<'EOF'
+  #!/usr/bin/env bash
+  [[ "$1" != "get" ]] && exit 0
+  echo "username=milesibastos"
+  echo "password=$(pass show gitea/dransay-token)"
+  EOF
+  chmod +x ~/.local/bin/git-credential-gitea
+  git config --global credential.https://gitea.dransay.ai.helper gitea
+  ```
+
 ## Gotchas
 
-- **Token scope mismatch** → 403s on specific commands. Regenerate the
-  token with the scopes above.
-- **Self-signed TLS** → add `--insecure` to `tea login add`, or better,
-  trust the CA system-wide.
-- **Config plaintext** → `~/.config/tea/config.yml` holds bare tokens.
-  `chmod 600` and don't sync it to a public repo. If you need secrets
-  hygiene, keep tokens in `pass` and inject at login time:
-  ```bash
-  tea login add --name work --url https://git.example.com \
-    --token "$(pass show work/gitea-token)"
-  ```
-- **SSH vs HTTPS clones** — `tea clone` respects your Gitea instance's
-  default clone URL. Override with `--ssh`.
-- Auto-login detection matches by URL host; if your repo's `origin` uses
-  a different hostname than the login URL (e.g. `git.example.com` vs
-  `gitea.example.com`), `tea` won't pair them.
+- **Token leaks via `ps`.** `tea login add --token $TOK` exposes `$TOK`
+  in the process table. Prefer `--token "$(pass show …)"` — the
+  expansion is evaluated in-shell before `tea` spawns.
+- **Token scope mismatch** → 403s on specific commands. Regenerate with
+  the scopes above.
+- **Self-signed TLS** → `--insecure` on login, or trust the CA.
+- **Config plaintext** → `~/.config/tea/config.yml` holds raw tokens.
+  `chmod 600` and don't sync it publicly.
+- **Hostname mismatch for auto-login** — if `origin` is
+  `git.example.com` but your login is `gitea.example.com`, add both as
+  separate logins or edit the login URL.
+- **No `tea tokens` subcommand** — token lifecycle lives at the API
+  layer. Use curl or the web UI.
 
 ## Related
 
-- `gh` — GitHub CLI (this repo uses it, not a replacement)
-- `lazygit` — TUI git, works against any remote regardless of host
+- [pass-cheatsheet.md](./pass-cheatsheet.md) — where to keep tokens
+- [bw-cheatsheet.md](./bw-cheatsheet.md) — alternative secrets store
+- `gh` — GitHub CLI (this repo uses it, not a replacement for `tea`)
+- `lazygit` — TUI git, host-agnostic
