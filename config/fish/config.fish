@@ -116,6 +116,7 @@ abbr -a 'claude!' claude --dangerously-skip-permissions
 abbr -a 'cc!' claude --dangerously-skip-permissions
 
 # ── Prompt ──────────────────────────────────────────────────────
+set -gx STARSHIP_CONFIG $XDG_CONFIG_HOME/starship/starship.toml
 command -q starship; and starship init fish | source
 
 # ── Local overrides ─────────────────────────────────────────────
