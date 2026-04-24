@@ -34,7 +34,7 @@ else if test -d /home/linuxbrew/.linuxbrew
 end
 
 # ── PATH ────────────────────────────────────────────────────────
-for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin
+for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin $HOME/.opencode/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin
     test -d $dir; and fish_add_path -pP $dir
 end
 
