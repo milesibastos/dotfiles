@@ -4,6 +4,11 @@
 # ── Environment ─────────────────────────────────────────────────
 set -gx XDG_CONFIG_HOME "$HOME/.config"
 
+# Ensure a UTF-8 locale before tmux/less/etc. inspect it. `su -` and fresh
+# users inherit nothing, so LANG can be empty → tmux locks client_utf8=0
+# at attach time and renders multi-byte glyphs as `_`.
+test -z "$LANG"; and set -gx LANG en_US.UTF-8
+
 # Derive DOTFILES from this file's real path. `path resolve` chases symlinks
 # on any parent segment (our setup symlinks ~/.config/fish, not config.fish).
 set -l _self (path resolve (status filename))
