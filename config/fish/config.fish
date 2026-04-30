@@ -63,7 +63,12 @@ if command -q fzf
     set -gx FZF_DEFAULT_OPTS "--color bg:-1,bg+:-1,fg:-1,fg+:#feffff,hl:#993f84,hl+:#d256b5,info:#676767,prompt:#676767,pointer:#676767"
 end
 
-# terminfo
+# terminfo: auto-install ghostty entry on first session so `clear`, `tput`,
+# vim, etc. work for any user (e.g. after `su -`) without running bootstrap.
+if not test -e ~/.terminfo/78/xterm-ghostty; and not test -e ~/.terminfo/x/xterm-ghostty
+    set -l _ghostty_ti /Applications/Ghostty.app/Contents/Resources/terminfo
+    test -d $_ghostty_ti; and mkdir -p ~/.terminfo; and cp -R $_ghostty_ti/. ~/.terminfo/ 2>/dev/null
+end
 test -e ~/.terminfo; and set -gx TERMINFO_DIRS ~/.terminfo /usr/share/terminfo
 
 # pnpm
