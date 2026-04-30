@@ -21,7 +21,6 @@ window-colorspace = "display-p3"
 adjust-cell-height = 10%
 cursor-invert-fg-bg = true
 
-shell-integration-features = no-cursor,sudo
 confirm-close-surface = false
 
 # macos-icon = "custom-style"
