@@ -90,6 +90,7 @@
       "Bash(sudo rm -rf /* *)"
     ],
     "ask": [
+      "Bash(git push *)",
       "Bash(gh pr merge *)",
       "Bash(docker push *)",
       "Bash(npm publish *)"
@@ -324,6 +325,7 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "fastMode": true,
+  "advisorModel": "opus",
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "theme": "custom:moonstone",
@@ -331,6 +333,5 @@
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
-  "defaultMode": "auto",
-  "advisorModel": "opus"
+  "defaultMode": "auto"
 }
