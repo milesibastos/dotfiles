@@ -20,7 +20,24 @@ cmd([[abbr attribuet attribute]])
 local opt = vim.opt
 
 if not vim.env.SSH_TTY then
-  -- don't set the clipboard when in SSH
+  -- Under `su - $USER`, pbcopy/pbpaste can't reach the GUI user's NSPasteboard.
+  -- When inside tmux, route through tmux's load-buffer/save-buffer: tmux emits
+  -- OSC 52 to Ghostty over its own connection, which writes the clipboard as
+  -- the GUI user. Outside tmux we fall back to nvim's default macOS provider.
+  if vim.env.TMUX then
+    vim.g.clipboard = {
+      name = "tmux",
+      copy = {
+        ["+"] = { "tmux", "load-buffer", "-w", "-" },
+        ["*"] = { "tmux", "load-buffer", "-w", "-" },
+      },
+      paste = {
+        ["+"] = { "tmux", "save-buffer", "-" },
+        ["*"] = { "tmux", "save-buffer", "-" },
+      },
+      cache_enabled = 1,
+    }
+  end
   opt.clipboard = "unnamedplus" -- use the system clipboard
 end
 
