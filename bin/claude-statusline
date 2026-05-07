@@ -14,15 +14,16 @@ RESET='\033[0m'
 # Separator (minimal style)
 SEP="${DIM}│${RESET}"
 
-# Nerd font icons (colorized)
-ICON_PROJECT="${BLUE}$(printf '\ue5ff')${RESET}"
-ICON_BRANCH="${GREEN}$(printf '\ue725')${RESET}"
-ICON_CONTEXT="${MAGENTA}$(printf '\U000f09d1')${RESET}"
-ICON_COST="${GREEN}$(printf '\uf155')${RESET}"
-ICON_STYLE="${CYAN}$(printf '\U000f03d8')${RESET}"
-ICON_USAGE="${YELLOW}$(printf '\U000f0241')${RESET}"
-ICON_LINES="${CYAN}$(printf '\uf440')${RESET}"
-ICON_AGENT="${DIM}$(printf '\U000f06a9')${RESET}"
+# Nerd font icons (colorized). Glyphs are embedded literally because macOS's
+# system bash 3.2 doesn't expand \u/\U escapes in printf.
+ICON_PROJECT="${BLUE}${RESET}"     # \ue5ff
+ICON_BRANCH="${GREEN}${RESET}"     # \ue725
+ICON_CONTEXT="${MAGENTA}󰧑${RESET}"  # \U000f09d1
+ICON_COST="${GREEN}${RESET}"       # \uf155
+ICON_STYLE="${CYAN}󰏘${RESET}"       # \U000f03d8
+ICON_USAGE="${YELLOW}󰉁${RESET}"     # \U000f0241
+ICON_LINES="${CYAN}${RESET}"       # \uf440
+ICON_AGENT="${DIM}󰚩${RESET}"        # \U000f06a9
 
 # Feature flags (set env vars to 0 to disable)
 SHOW_CONTEXT_TOKENS="${CLAUDE_STATUSLINE_TOKENS:-1}"
@@ -42,10 +43,10 @@ get_model_name() { echo "$input" | jq -r '.model.display_name // "Unknown Model"
 get_model_icon() {
   local model_name=$(get_model_name)
   case "$model_name" in
-  *[Oo]pus*) printf "${MAGENTA}\U000f01e5${RESET}" ;;
-  *[Ss]onnet*) printf "${CYAN}\U000f075a${RESET}" ;;
-  *[Hh]aiku*) printf "${GREEN}\U000f0735${RESET}" ;;
-  *) printf "${DIM}\U000f06a9${RESET}" ;;
+  *[Oo]pus*) printf "${MAGENTA}󰇥${RESET}" ;;   # \U000f01e5
+  *[Ss]onnet*) printf "${CYAN}󰝚${RESET}" ;;    # \U000f075a
+  *[Hh]aiku*) printf "${GREEN}󰜵${RESET}" ;;    # \U000f0735
+  *) printf "${DIM}󰚩${RESET}" ;;               # \U000f06a9
   esac
 }
 get_output_style() { echo "$input" | jq -r '.output_style.name // "default"'; }
