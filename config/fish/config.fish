@@ -59,7 +59,7 @@ command -q zoxide; and zoxide init fish --hook pwd | source
 command -q fzf; and fzf --fish | source
 command -q pyenv; and pyenv init - fish | source
 command -q rbenv; and rbenv init - --no-rehash fish | source
-test -x "$HOME/.local/bin/mise"; and $HOME/.local/bin/mise activate fish | source
+command -q mise; and mise activate fish | source
 
 if command -q fzf
     set -gx FZF_DEFAULT_COMMAND 'fd --type f'
