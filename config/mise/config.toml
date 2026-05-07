@@ -1,9 +1,6 @@
 [tools]
 node = "24"
-python = "3.14.4"
-"npm:@mariozechner/pi-coding-agent" = "latest"
-"npm:wrangler" = "latest"
-"npm:greptile" = "latest"
+python = "3.14"
 pnpm = "latest"
 
 [settings]
