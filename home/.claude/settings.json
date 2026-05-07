@@ -89,7 +89,6 @@
       "Bash(sudo rm -rf /* *)"
     ],
     "ask": [
-      "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(gh pr merge *)",
       "Bash(docker push *)",
@@ -380,12 +379,12 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "advisorModel": "opus",
   "skipDangerousModePermissionPrompt": true,
   "theme": "custom:moonstone",
   "teammateMode": "tmux",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
-  "defaultMode": "auto",
-  "advisorModel": "opus"
+  "defaultMode": "auto"
 }
