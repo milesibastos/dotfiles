@@ -11,6 +11,11 @@ command_name=$(basename "${BASH_SOURCE[0]}")
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
+# Derive DOTFILES from script location if caller hasn't exported it yet
+# (needed for first-run, before symlinks and .zshenv are in place).
+: "${DOTFILES:=$(cd "$script_dir/.." &>/dev/null && pwd -P)}"
+export DOTFILES
+
 if [[ -f "$DOTFILES/bin/lib/common.sh" ]]; then
   source "$DOTFILES/bin/lib/common.sh"
 else
@@ -19,15 +24,30 @@ else
 fi
 
 find_commands() {
+  # Always search our own directory (sibling dot-* scripts) plus $PATH,
+  # so external commands work even when $DOTFILES/bin isn't on PATH
+  # (e.g., running from fish where .zshrc hasn't prepended it).
+  local -a search_dirs=("$script_dir")
   IFS=: read -ra path_dirs <<<"$PATH"
-  for dir in "${path_dirs[@]}"; do
-    # skip if the directory doesn't exist or isn't readable
+  search_dirs+=("${path_dirs[@]}")
+  for dir in "${search_dirs[@]}"; do
     [[ ! -d "$dir" ]] && continue
     for cmd in "$dir"/dot-*; do
       [[ -f "$cmd" && -x "$cmd" ]] || continue
       basename "$cmd" | sed 's/^dot-//'
     done
   done | sort -u
+}
+
+# Resolve a 'dot-<name>' external command: prefer sibling script, fall
+# back to $PATH. Prints the absolute path on success, nothing on miss.
+resolve_command() {
+  local name="$1"
+  if [[ -x "$script_dir/dot-$name" ]]; then
+    printf '%s\n' "$script_dir/dot-$name"
+  elif command -v "dot-$name" >/dev/null 2>&1; then
+    command -v "dot-$name"
+  fi
 }
 
 usage() {
@@ -45,13 +65,17 @@ $(fmt_key "Available Commands:")
         clean                     Remove broken symlinks
             -n, --dry-run         Preview without removing
     unlink [pkg]                  Unlink packages (default: all)
+    bootstrap                     Post-link fixes (compaudit perms, terminfo)
 EOF
 
   echo -e "\nExternal commands:"
 
   find_commands | while read -r cmd; do
     # Get the description from the script if available
-    description=$(grep "^# Description:" "$(which "dot-$cmd")" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//' || echo "No description available")
+    local cmd_path
+    cmd_path=$(resolve_command "$cmd")
+    description=$(grep "^# Description:" "$cmd_path" 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//' || echo "No description available")
+    [[ -z "$description" ]] && description="No description available"
     printf "    $(fmt_cmd "%-12s") %s\n" "$cmd" "$description"
   done
 }
@@ -129,6 +153,8 @@ cmd_backup() {
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local backup_path="${backup_dir}/dotfiles_backup_${timestamp}"
 
+  mkdir -p "$backup_dir"
+
   log_info "Creating backup in: $backup_path"
 
   files_to_backup=(
@@ -174,7 +200,7 @@ cmd_backup() {
       echo "$file" >>"$tmpfile"
       [[ "$verbose" == true ]] && log_info "Found: $file"
     else
-      log_warning "File not found: $src_path"
+      [[ "$verbose" == true ]] && log_warning "File not found: $src_path"
     fi
   done
 
@@ -195,6 +221,68 @@ cmd_backup() {
   else
     log_warning "No files to backup"
   fi
+}
+
+# ── Bootstrap (post-link fixes) ─────────────────────────────────
+
+cmd_bootstrap() {
+  printf "\n  ${BOLD}dot bootstrap${RESET}\n\n"
+
+  # 0. Create directories .zshrc's prepend_path helper only adds when they
+  #    already exist. Otherwise the first shell after 'dot link' doesn't
+  #    put ~/.local/bin on PATH and user-installed tools (Claude, etc.)
+  #    appear 'command not found' until the next exec zsh -l.
+  printf "  ${BOLD}user bin directories${RESET}\n"
+  local created=0
+  for d in "$HOME/.local/bin" "$HOME/bin"; do
+    if [[ ! -d "$d" ]]; then
+      mkdir -p "$d"
+      created=$((created + 1))
+    fi
+  done
+  if [[ $created -gt 0 ]]; then
+    printf "  ${GREEN}+ created %d dir(s)${RESET}\n" "$created"
+  else
+    printf "  ${DIM}· already exist${RESET}\n"
+  fi
+  echo
+
+  # 1. Fix zsh compinit 'insecure directories' by stripping group/world write.
+  printf "  ${BOLD}zsh completion perms${RESET}\n"
+  if command -v zsh >/dev/null 2>&1; then
+    local insecure
+    insecure=$(zsh -c 'autoload -Uz compaudit && compaudit 2>/dev/null' || true)
+    if [[ -n "$insecure" ]]; then
+      local fixed=0
+      while IFS= read -r path; do
+        [[ -e "$path" ]] || continue
+        if chmod g-w,o-w "$path" 2>/dev/null; then
+          fixed=$((fixed + 1))
+        fi
+      done <<<"$insecure"
+      printf "  ${GREEN}+ fixed %d path(s)${RESET}\n" "$fixed"
+    else
+      printf "  ${DIM}· no insecure dirs${RESET}\n"
+    fi
+  else
+    printf "  ${DIM}· zsh not found, skipping${RESET}\n"
+  fi
+
+  printf "\n  ${BOLD}ghostty terminfo${RESET}\n"
+  if infocmp xterm-ghostty >/dev/null 2>&1; then
+    printf "  ${DIM}· already installed${RESET}\n"
+  elif command -v tic >/dev/null 2>&1 && [[ -f "$DOTFILES/resources/xterm-ghostty.terminfo" ]]; then
+    if tic -x "$DOTFILES/resources/xterm-ghostty.terminfo" >/dev/null 2>&1; then
+      printf "  ${GREEN}+ installed from %s${RESET}\n" "resources/xterm-ghostty.terminfo"
+    else
+      printf "  ${YELLOW}⚠ tic failed; run: tic -x %s${RESET}\n" "$DOTFILES/resources/xterm-ghostty.terminfo"
+    fi
+  else
+    printf "  ${YELLOW}⚠ tic or vendored terminfo missing${RESET}\n"
+  fi
+
+  printf "\n"
+  log_success "Bootstrap complete."
 }
 
 # ── Symlink helpers ──────────────────────────────────────────────
@@ -221,6 +309,7 @@ do_link() {
     printf "  ${YELLOW}⚠ %-20s${RESET} ${DIM}exists (not a symlink)${RESET}\n" "$label"
     STAT_SKIPPED=$((STAT_SKIPPED + 1))
   else
+    mkdir -p "$(dirname "$target")"
     ln -s "$src" "$target"
     printf "  ${GREEN}+ %-20s${RESET} ${DIM}→ %s${RESET}\n" "$label" "$display"
     STAT_LINKED=$((STAT_LINKED + 1))
@@ -447,9 +536,13 @@ main() {
   unlink)
     cmd_link "unlink" "$@"
     ;;
+  bootstrap)
+    cmd_bootstrap "$@"
+    ;;
   *)
-    if command -v "dot-$cmd" >/dev/null 2>&1; then
-      "dot-$cmd" "$@"
+    resolved=$(resolve_command "$cmd")
+    if [[ -n "$resolved" ]]; then
+      "$resolved" "$@"
     else
       log_error "Unknown command: $cmd"
       usage
