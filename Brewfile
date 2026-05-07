@@ -1,14 +1,12 @@
 # vim:ft=ruby
 
-tap 'homebrew/bundle'
+# NOTE: homebrew/bundle tap was deprecated in 2025 — `brew bundle` is now
+# built into Homebrew core, no tap required.
 
 if OS.mac?
-  tap 'FelixKratz/formulae' # For janky borders
-
-  # taps
-  brew 'noti'                          # utility to display notifications from scripts
-  brew 'trash'                         # rm, but put in the trash rather than completely delete
-  brew 'borders'                       # add borders to windows
+  brew 'noti'                              # utility to display notifications from scripts
+  brew 'trash'                             # rm, but put in the trash rather than completely delete
+  brew 'FelixKratz/formulae/borders'       # add borders to windows (janky-borders)
 
   # Applications
   cask 'ghostty'                       # a better terminal emulator
@@ -16,7 +14,10 @@ if OS.mac?
   cask '1password/tap/1password-cli'   # 1Password CLI
   cask 'karabiner-elements'            # keyboard customizer
   cask 'nikitabobko/tap/aerospace'     # a tiling window manager
-  cask 'claude-code'                   # Claude AI CLI
+  # claude-code: managed by Anthropic's native installer, not Homebrew
+  # (cask version lags upstream by many releases). Install with:
+  #   curl -fsSL https://claude.ai/install.sh | bash
+  # `claude update` handles future updates.
 
   # Fonts
   cask 'font-symbols-only-nerd-font'   # nerd-only symbols font
@@ -30,10 +31,13 @@ brew 'git'                             # Git version control
 brew 'vim'                             # Vim editor
 brew 'bash'                            # bash shell
 brew 'zsh'                             # zsh shell
+brew 'fish'                            # fish shell (default interactive shell)
+brew 'starship'                        # cross-shell prompt
 brew 'grep'                            # grep
 
 # packages
 brew 'bat'                             # better cat
+brew 'cmake'                           # needed to build telescope-fzf-native.nvim
 brew 'cloc'                            # lines of code counter
 brew 'entr'                            # file watcher / command runner
 brew 'eza'                             # ls alternative
@@ -42,6 +46,8 @@ brew 'gum'                             # fancy UI utilities
 brew 'rbenv'                           # Ruby version manager
 brew 'fzf'                             # Fuzzy file searcher, used in scripts and in vim
 brew 'gh'                              # GitHub CLI
+brew 'tea'                             # Gitea CLI
+brew 'bitwarden-cli'                   # Bitwarden CLI (bw)
 brew 'git-delta'                       # a better git diff
 brew 'glow'                            # markdown viewer
 brew 'gnupg'                           # GPG
@@ -53,6 +59,7 @@ brew 'mise'                            # mise-en-place dev env tool
 brew 'neovim'                          # A better vim
 brew 'python'                          # python (latest)
 brew 'ripgrep'                         # very fast file searcher
+brew 'rust'                            # Rust toolchain (cargo) — needed to build sniprun
 brew 'shellcheck'                      # diagnostics for shell sripts
 brew 'stylua'                          # lua code formatter
 brew 'tmux'                            # terminal multiplexer
