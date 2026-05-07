@@ -282,10 +282,18 @@ os:
   openLinkCommand: ""
   # CopyToClipboardCmd is the command for copying to clipboard.
   # See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#custom-command-for-copying-to-and-pasting-from-clipboard
-  copyToClipboardCmd: ""
+  # Under `su - etereo` pbcopy can't reach the GUI user's pasteboard. We route
+  # through tmux (`set-clipboard on`) which forwards OSC 52 to Ghostty over its
+  # own connection — bypassing lazygit's tcell-controlled TTY. `-w` makes tmux
+  # also emit the OSC 52 escape to the outer terminal (Ghostty), which writes
+  # NSPasteboard from the GUI user's session.
+  copyToClipboardCmd: 'printf %s {{text}} | tmux load-buffer -w -'
   # ReadFromClipboardCmd is the command for reading the clipboard.
   # See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#custom-command-for-copying-to-and-pasting-from-clipboard
-  readFromClipboardCmd: ""
+  # tmux's most-recent buffer mirrors what we just copied. It will NOT reflect
+  # clipboard content set outside tmux (e.g. browser → cmd-C); for that the only
+  # option under su is OSC 52 read, which is fragile. This covers the common case.
+  readFromClipboardCmd: tmux save-buffer -
 # If true, don't display introductory popups upon opening Lazygit.
 disableStartupPopups: false
 # What to do when opening Lazygit outside of a git repo.
