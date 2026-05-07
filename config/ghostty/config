@@ -1,7 +1,7 @@
 # Theme settings
 # theme = dark:catppuccin-macchiato,light:catppuccin-latte
 theme = dark:TokyoNight Night,light:TokyoNight Day
-background-opacity = 0.85
+# background-opacity = 0.85
 background-blur-radius = 30
 # background = #1c2021
 # background = #0B1215
@@ -10,6 +10,7 @@ background-blur-radius = 30
 bold-is-bright = true
 
 # window settings
+macos-option-as-alt = true
 macos-titlebar-style = hidden
 window-decoration = true
 window-theme = auto
@@ -36,7 +37,7 @@ mouse-hide-while-typing = true
 font-family = "Monaspace Neon Regular"
 font-family-italic = "Monaspace Radon Var Regular Italic"
 font-family-bold-italic = "Monaspace Radon Var Bold Italic"
-font-size = 16
+font-size = 14
 font-feature = +liga
 cursor-style = block
 adjust-underline-position = 4
