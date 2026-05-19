@@ -46,7 +46,10 @@ if not set -q HOMEBREW_PREFIX
 end
 
 # ── PATH ────────────────────────────────────────────────────────
-for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin $HOME/.opencode/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin
+# mise shims keep node/python on PATH in non-interactive shells, where
+# `mise activate` (below) never runs — version-independent, unlike the
+# raw install path mise's own warning suggests hardcoding.
+for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin $HOME/.opencode/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin $HOME/.local/share/mise/shims
     test -d $dir; and fish_add_path -pP $dir
 end
 
