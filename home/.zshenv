@@ -29,6 +29,11 @@ fpath=(
 
 typeset -aU path
 
+# mise shims keep node/python on PATH in non-interactive zsh (cron,
+# scripts), where `mise activate` in .zshrc never runs. Version-
+# independent, unlike the raw install path mise's warning suggests.
+[[ -d $HOME/.local/share/mise/shims ]] && path=($HOME/.local/share/mise/shims $path)
+
 export EDITOR='nvim'
 export GIT_EDITOR='nvim'
 
