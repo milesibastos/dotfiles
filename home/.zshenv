@@ -29,6 +29,11 @@ fpath=(
 
 typeset -aU path
 
+# Keep dotfile/user scripts ahead of system tools for non-interactive shells too.
+# This lets pbcopy route through tmux/OSC52 for isolated macOS users.
+[[ -d $DOTFILES/bin ]] && path=($DOTFILES/bin ${path:#$DOTFILES/bin})
+[[ -d $HOME/bin ]] && path=($HOME/bin ${path:#$HOME/bin})
+
 # mise shims keep node/python on PATH in non-interactive zsh (cron,
 # scripts), where `mise activate` in .zshrc never runs. Version-
 # independent, unlike the raw install path mise's warning suggests.
@@ -36,4 +41,3 @@ typeset -aU path
 
 export EDITOR='nvim'
 export GIT_EDITOR='nvim'
-

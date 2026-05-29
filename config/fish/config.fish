@@ -138,3 +138,8 @@ command -q starship; and starship init fish | source
 
 # ── Local overrides ─────────────────────────────────────────────
 test -f $HOME/.config/fish/config.local.fish; and source $HOME/.config/fish/config.local.fish
+
+# Keep user/dotfile shims ahead of system tools after mise/local config mutate PATH.
+# mise is already activated above (guarded); only the PATH reorder is needed here.
+# Order matches .zshenv/.zprofile: $DOTFILES/bin first, then $HOME/bin.
+fish_add_path -pmP $DOTFILES/bin $HOME/bin
