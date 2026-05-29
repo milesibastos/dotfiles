@@ -2,6 +2,7 @@
 node = "24"
 python = "3.14"
 pnpm = "latest"
+"pipx:graphifyy" = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["terraform", "node"]
