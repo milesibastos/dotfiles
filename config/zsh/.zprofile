@@ -16,3 +16,7 @@ fi
 if [[ -x "$(command -v rbenv)" ]]; then
   eval "$(rbenv init - --no-rehash zsh)";
 fi
+
+# Keep user/dotfile shims ahead of system tools after Homebrew/rbenv mutate PATH.
+[[ -d $DOTFILES/bin ]] && path=($DOTFILES/bin ${path:#$DOTFILES/bin})
+[[ -d $HOME/bin ]] && path=($HOME/bin ${path:#$HOME/bin})

@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+tmux_cmd=
+if command -v tmux >/dev/null 2>&1; then
+  tmux_cmd=tmux
+elif [ -x /opt/homebrew/bin/tmux ]; then
+  tmux_cmd=/opt/homebrew/bin/tmux
+elif [ -x /usr/local/bin/tmux ]; then
+  tmux_cmd=/usr/local/bin/tmux
+fi
+
+if [ -n "${TMUX:-}" ] && [ -n "$tmux_cmd" ]; then
+  prev=
+  for arg do
+    if [ "$prev" = "-e" ]; then
+      case "$arg" in
+        "set the clipboard to \""*)
+          text=${arg#"set the clipboard to \""}
+          text=${text%\"}
+          printf '%s' "$text" | perl -pe 's/\\"/"/g; s/\\\\/\\/g' | "$tmux_cmd" load-buffer -w -
+          exit $?
+          ;;
+      esac
+    fi
+    prev=$arg
+  done
+fi
+
+exec /usr/bin/osascript "$@"
