@@ -89,7 +89,6 @@
       "Bash(sudo rm -rf /* *)"
     ],
     "ask": [
-      "Bash(git push *)",
       "Bash(gh pr merge *)",
       "Bash(docker push *)",
       "Bash(npm publish *)"
@@ -200,7 +199,8 @@
     "plugin-dev@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
-    "ruby-lsp@claude-plugins-official": true
+    "ruby-lsp@claude-plugins-official": true,
+    "chrome-devtools-mcp@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "obsidian-skills": {
