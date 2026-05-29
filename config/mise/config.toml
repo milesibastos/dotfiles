@@ -1,5 +1,6 @@
 [tools]
 node = "24"
+"pipx:graphifyy" = "latest"
 python = "3.11"
 
 [settings]
