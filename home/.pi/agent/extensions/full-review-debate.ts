@@ -46,6 +46,25 @@ type ReviewRound = {
 	results: RunResult[];
 };
 
+type LiveEvent = {
+	type: "start" | "line" | "done";
+	phase: string;
+	label: string;
+	model: string;
+	text?: string;
+	status?: "done" | "failed" | "aborted";
+};
+
+type LiveReporter = (event: LiveEvent) => void;
+
+type LiveTaskState = {
+	phase: string;
+	label: string;
+	model: string;
+	status: "running" | "done" | "failed" | "aborted";
+	lines: string[];
+};
+
 function usage(): string {
 	return `# /full-review
 
@@ -61,6 +80,7 @@ Behavior:
   - opencode-go/glm-5.2
   - opencode-go/kimi-k2.7-code
 - Runs challenge rounds where reviewers inspect each other's claims and dispute weak findings.
+- Streams reviewer tool calls and assistant progress live in the TUI while the debate runs.
 - Synthesizes consensus, disagreements, required-now fixes, optional work, and ignored feedback.
 - Does not edit by default.
 - If the exact word \`autofix\` is present, only after synthesis it asks the main agent to apply required-now fixes.
@@ -119,6 +139,84 @@ function extractTextFromMessage(message: any): string {
 		.trim();
 }
 
+function summarizeForLive(text: string, maxLength = 220): string {
+	const compact = text.replace(/\s+/g, " ").trim();
+	if (!compact) return "";
+	return compact.length > maxLength ? `${compact.slice(0, maxLength - 1)}…` : compact;
+}
+
+function stringifyToolArgs(args: any): string {
+	if (!args || typeof args !== "object") return "";
+	const safeArgs: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(args)) {
+		if (typeof value === "string") safeArgs[key] = summarizeForLive(value, 90);
+		else if (typeof value === "number" || typeof value === "boolean") safeArgs[key] = value;
+		else if (Array.isArray(value)) safeArgs[key] = `[${value.length} item${value.length === 1 ? "" : "s"}]`;
+		else if (value && typeof value === "object") safeArgs[key] = "{…}";
+	}
+	const serialized = JSON.stringify(safeArgs);
+	return serialized === "{}" ? "" : ` ${summarizeForLive(serialized, 180)}`;
+}
+
+function getMessageLiveLines(message: any): string[] {
+	const lines: string[] = [];
+	const parts = Array.isArray(message?.content) ? message.content : [];
+	for (const part of parts) {
+		if (part?.type === "toolCall") {
+			lines.push(`→ ${part.name || "tool"}${stringifyToolArgs(part.arguments)}`);
+			continue;
+		}
+		if (part?.type === "text" && typeof part.text === "string") {
+			const summary = summarizeForLive(part.text);
+			if (summary) lines.push(summary);
+		}
+	}
+	return lines;
+}
+
+function clipLine(line: string, width: number): string {
+	if (width <= 0 || line.length <= width) return line;
+	return `${line.slice(0, Math.max(0, width - 1))}…`;
+}
+
+function renderLivePanel(
+	tasks: Map<string, LiveTaskState>,
+	target: string,
+	roundsCount: number,
+	statusText: string,
+	width: number,
+	theme: any,
+): string[] {
+	const fg = (name: string, text: string) => (typeof theme?.fg === "function" ? theme.fg(name, text) : text);
+	const bold = (text: string) => (typeof theme?.bold === "function" ? theme.bold(text) : text);
+	const lines: string[] = [];
+	lines.push(fg("toolTitle", bold("/full-review live debate")) + fg("dim", ` — ${target}`));
+	lines.push(fg("dim", `3 reviewers • ${roundsCount} challenge round${roundsCount === 1 ? "" : "s"} • ${statusText}`));
+	lines.push(fg("muted", "Press Esc/Ctrl-C to cancel."));
+
+	for (const task of tasks.values()) {
+		const icon =
+			task.status === "running"
+				? fg("warning", "⏳")
+				: task.status === "done"
+					? fg("success", "✓")
+					: task.status === "aborted"
+						? fg("warning", "◼")
+						: fg("error", "✗");
+		lines.push("");
+		lines.push(`${icon} ${fg("accent", task.phase)} ${fg("toolTitle", task.label)} ${fg("dim", `(${task.model})`)}`);
+		const recent = task.lines.slice(-5);
+		if (recent.length === 0) {
+			lines.push(fg("dim", "  waiting for events…"));
+		} else {
+			for (const line of recent) lines.push(fg("toolOutput", `  ${line}`));
+		}
+	}
+
+	if (tasks.size === 0) lines.push("", fg("dim", "Starting reviewers…"));
+	return lines.slice(-90).map((line) => clipLine(line, width || 120));
+}
+
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
 	const currentScript = process.argv[1];
 	const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
@@ -156,15 +254,27 @@ async function cleanupTempPrompt(tmp: { dir: string; file: string } | null): Pro
 	}
 }
 
-async function runPiReviewer(cwd: string, modelEntry: ReviewModel, phase: string, prompt: string): Promise<RunResult> {
+async function runPiReviewer(
+	cwd: string,
+	modelEntry: ReviewModel,
+	phase: string,
+	prompt: string,
+	options: { signal?: AbortSignal; onLive?: LiveReporter } = {},
+): Promise<RunResult> {
 	let tmp: { dir: string; file: string } | null = null;
 	let stdoutBuffer = "";
 	let stderr = "";
 	let lastAssistantText = "";
 	let stopReason: string | undefined;
 	let errorMessage: string | undefined;
+	let wasAborted = false;
+
+	const emit = (event: Omit<LiveEvent, "phase" | "label" | "model">) => {
+		options.onLive?.({ phase, label: modelEntry.label, model: modelEntry.model, ...event });
+	};
 
 	try {
+		emit({ type: "start" });
 		tmp = await writeTempPrompt(prompt);
 		const args = [
 			"--mode",
@@ -196,11 +306,26 @@ async function runPiReviewer(cwd: string, modelEntry: ReviewModel, phase: string
 					return;
 				}
 
+				if (event.type === "tool_execution_start" && event.toolName) {
+					emit({ type: "line", text: `→ ${event.toolName}${stringifyToolArgs(event.args ?? event.input)}` });
+				}
+
+				if (event.type === "tool_execution_end" && event.toolName) {
+					emit({ type: "line", text: `← ${event.toolName}${event.isError ? " failed" : " done"}` });
+				}
+
 				if (event.type === "message_end" && event.message?.role === "assistant") {
 					const text = extractTextFromMessage(event.message);
 					if (text) lastAssistantText = text;
+					for (const liveLine of getMessageLiveLines(event.message)) emit({ type: "line", text: liveLine });
 					if (event.message.stopReason) stopReason = event.message.stopReason;
 					if (event.message.errorMessage) errorMessage = event.message.errorMessage;
+				}
+
+				if (event.type === "tool_result_end" && event.message) {
+					const toolName = event.message.toolName || event.toolName || "tool";
+					const text = extractTextFromMessage(event.message);
+					emit({ type: "line", text: `← ${toolName}${text ? `: ${summarizeForLive(text, 160)}` : ""}` });
 				}
 			};
 
@@ -212,7 +337,10 @@ async function runPiReviewer(cwd: string, modelEntry: ReviewModel, phase: string
 			});
 
 			proc.stderr.on("data", (data) => {
-				stderr += data.toString();
+				const text = data.toString();
+				stderr += text;
+				const summary = summarizeForLive(text, 180);
+				if (summary) emit({ type: "line", text: `stderr: ${summary}` });
 			});
 
 			proc.on("close", (code) => {
@@ -224,7 +352,25 @@ async function runPiReviewer(cwd: string, modelEntry: ReviewModel, phase: string
 				stderr += `\n${error instanceof Error ? error.message : String(error)}`;
 				resolve(1);
 			});
+
+			const abort = () => {
+				wasAborted = true;
+				emit({ type: "line", text: "aborting reviewer…" });
+				proc.kill("SIGTERM");
+				setTimeout(() => {
+					if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
+				}, 5000).unref?.();
+			};
+			if (options.signal?.aborted) abort();
+			else options.signal?.addEventListener("abort", abort, { once: true });
 		});
+
+		if (wasAborted) {
+			stopReason = "aborted";
+			errorMessage = "Reviewer aborted";
+		}
+		const status = wasAborted ? "aborted" : exitCode === 0 && !errorMessage ? "done" : "failed";
+		emit({ type: "done", status, text: status === "done" ? "completed" : errorMessage || `exit ${exitCode}` });
 
 		return {
 			phase,
@@ -368,30 +514,126 @@ Reply with [1], [2], or further instructions:
 [2] Apply the fixes worth doing now plus optional improvements.`;
 }
 
-async function runFullReviewDebate(ctx: any, target: string, roundsCount: number, autofix: boolean): Promise<{ finalText: string; rounds: ReviewRound[]; synthesis: RunResult }> {
+async function runFullReviewDebate(
+	ctx: any,
+	target: string,
+	roundsCount: number,
+	autofix: boolean,
+	onLive?: LiveReporter,
+	signal?: AbortSignal,
+): Promise<{ finalText: string; rounds: ReviewRound[]; synthesis: RunResult }> {
 	const rounds: ReviewRound[] = [];
+	const runnerOptions = { signal, onLive };
+	const throwIfAborted = () => {
+		if (signal?.aborted) throw new Error("Full-review debate canceled");
+	};
 
 	ctx.ui?.setStatus?.("full-review", "initial reviews…");
 	const initialResults = await Promise.all(
-		REVIEW_MODELS.map((modelEntry) => runPiReviewer(ctx.cwd, modelEntry, "initial review", buildInitialPrompt(target, modelEntry))),
+		REVIEW_MODELS.map((modelEntry) => runPiReviewer(ctx.cwd, modelEntry, "initial review", buildInitialPrompt(target, modelEntry), runnerOptions)),
 	);
+	throwIfAborted();
 	rounds.push({ name: "Initial independent review", results: initialResults });
 
 	for (let round = 1; round <= roundsCount; round++) {
 		ctx.ui?.setStatus?.("full-review", `challenge round ${round}/${roundsCount}…`);
 		const challengeResults = await Promise.all(
 			REVIEW_MODELS.map((modelEntry) =>
-				runPiReviewer(ctx.cwd, modelEntry, `challenge round ${round}`, buildChallengePrompt(target, modelEntry, round, rounds)),
+				runPiReviewer(
+					ctx.cwd,
+					modelEntry,
+					`challenge round ${round}`,
+					buildChallengePrompt(target, modelEntry, round, rounds),
+					runnerOptions,
+				),
 			),
 		);
+		throwIfAborted();
 		rounds.push({ name: `Challenge round ${round}`, results: challengeResults });
 	}
 
 	ctx.ui?.setStatus?.("full-review", "synthesizing…");
-	const synthesis = await runPiReviewer(ctx.cwd, SYNTHESIS_MODEL, "synthesis", buildSynthesisPrompt(target, rounds, autofix));
+	const synthesis = await runPiReviewer(ctx.cwd, SYNTHESIS_MODEL, "synthesis", buildSynthesisPrompt(target, rounds, autofix), runnerOptions);
+	throwIfAborted();
 	const warnings = formatFailureSummary(rounds);
 	const finalText = `${synthesis.output.trim()}${warnings}`;
 	return { finalText, rounds, synthesis };
+}
+
+async function runFullReviewWithLivePanel(
+	ctx: any,
+	target: string,
+	roundsCount: number,
+	autofix: boolean,
+): Promise<{ finalText: string; rounds: ReviewRound[]; synthesis: RunResult } | null> {
+	if (ctx.mode !== "tui" || typeof ctx.ui?.custom !== "function") {
+		return runFullReviewDebate(ctx, target, roundsCount, autofix);
+	}
+
+	return ctx.ui.custom((tui: any, theme: any, _keybindings: any, done: (value: any) => void) => {
+		const controller = new AbortController();
+		const tasks = new Map<string, LiveTaskState>();
+		let statusText = "starting…";
+		let settled = false;
+
+		const requestRender = () => {
+			try {
+				tui.requestRender?.();
+			} catch {
+				// ignore render refresh failures
+			}
+		};
+
+		const onLive: LiveReporter = (event) => {
+			const key = `${event.phase}::${event.label}`;
+			let task = tasks.get(key);
+			if (!task) {
+				task = { phase: event.phase, label: event.label, model: event.model, status: "running", lines: [] };
+				tasks.set(key, task);
+			}
+
+			if (event.type === "start") {
+				task.status = "running";
+				statusText = event.phase;
+			} else if (event.type === "line" && event.text) {
+				task.lines.push(event.text);
+				if (task.lines.length > 80) task.lines.splice(0, task.lines.length - 80);
+			} else if (event.type === "done") {
+				task.status = event.status === "aborted" ? "aborted" : event.status === "failed" ? "failed" : "done";
+				if (event.text) task.lines.push(event.text);
+			}
+			requestRender();
+		};
+
+		runFullReviewDebate(ctx, target, roundsCount, autofix, onLive, controller.signal)
+			.then((result) => {
+				settled = true;
+				done(result);
+			})
+			.catch((error) => {
+				settled = true;
+				if (controller.signal.aborted) done(null);
+				else done({ __fullReviewError: error });
+			});
+
+		return {
+			render(width: number) {
+				return renderLivePanel(tasks, target, roundsCount, settled ? "finishing…" : statusText, width, theme);
+			},
+			invalidate() {
+				requestRender();
+			},
+			handleInput(data: string) {
+				if (data === "\u0003" || data === "\u001b" || data === "escape") {
+					statusText = "canceling…";
+					controller.abort();
+					requestRender();
+					return true;
+				}
+				return true;
+			},
+		};
+	});
 }
 
 export default function fullReviewDebateExtension(pi: any) {
@@ -416,7 +658,14 @@ export default function fullReviewDebateExtension(pi: any) {
 			);
 
 			try {
-				const { finalText, rounds, synthesis } = await runFullReviewDebate(ctx, parsed.target, parsed.rounds, parsed.autofix);
+				const reviewResult: any = await runFullReviewWithLivePanel(ctx, parsed.target, parsed.rounds, parsed.autofix);
+				if (!reviewResult) {
+					ctx.ui?.notify?.("Full-review debate canceled", "info");
+					return;
+				}
+				if (reviewResult.__fullReviewError) throw reviewResult.__fullReviewError;
+
+				const { finalText, rounds, synthesis } = reviewResult;
 				const displayText = parsed.autofix ? finalText : appendActionMenu(finalText);
 
 				pi.sendMessage({
