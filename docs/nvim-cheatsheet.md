@@ -183,7 +183,7 @@ Other snacks: `,/` scratch · `,S` select scratch · `C-/` terminal · `,N` neov
 | `prefer_git` | `false` | Git over curl for deps |
 | `proxy` | `nil` | Sets `http(s)_proxy` env |
 | `snippets_dir` | `nil` | Load snippets from path |
-| `startup_art` / `startup_color` | `nicknisi` / `#653CAD` | Dashboard |
+| `startup_art` / `startup_color` | `neovim` / `#653CAD` | Dashboard |
 
 Current `init.lua` sets `python = true` and `transparent = true`.
 

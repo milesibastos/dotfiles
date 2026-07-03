@@ -9,6 +9,9 @@ M.get_random_entry = function(tbl)
   for key, _ in pairs(tbl) do
     table.insert(keys, key)
   end
+  if #keys == 0 then
+    return nil
+  end
   local random_key = keys[math.random(#keys)]
   return tbl[random_key]
 end
