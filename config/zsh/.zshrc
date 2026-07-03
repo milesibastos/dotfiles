@@ -14,7 +14,7 @@ autoload -U compinit add-zsh-hook
 compinit
 
 # setup PATH
-for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin; do
+for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/libexec/gnubin /usr/local/sbin $DOTFILES/bin $HOME/bin /Applications/Obsidian.app/Contents/MacOS; do
   prepend_path $dir
 done
 
@@ -24,6 +24,8 @@ if [[ -d ~/code ]]; then
   export CODE_DIR=~/code
 elif [[ -d ~/Developer ]]; then
   export CODE_DIR=~/Developer
+elif [[ -d ~/workspaces ]]; then
+  export CODE_DIR=~/workspaces
 fi
 
 # display how long all tasks over 10 seconds take

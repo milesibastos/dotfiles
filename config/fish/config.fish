@@ -30,6 +30,8 @@ if test -d ~/code
     set -gx CODE_DIR ~/code
 else if test -d ~/Developer
     set -gx CODE_DIR ~/Developer
+else if test -d ~/workspaces
+    set -gx CODE_DIR ~/workspaces
 end
 
 # ── Homebrew (must run before tools installed under brew prefix) ─
