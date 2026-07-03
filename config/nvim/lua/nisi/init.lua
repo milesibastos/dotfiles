@@ -18,7 +18,7 @@ local utils = require("nisi.utils")
 ---@field snippets_dir string|nil The directory to load snippets from
 local config = {
   lazypath = vim.fn.stdpath("data") .. "lazy/lazy.nvim",
-  startup_art = "nicknisi",
+  startup_art = "neovim",
   startup_color = "#653CAD",
   zen = false,
   copilot = true,
