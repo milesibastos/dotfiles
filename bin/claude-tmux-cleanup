@@ -15,8 +15,7 @@ if [ -n "$TMUX" ]; then
   tmux set-option -g -u pane-border-status 2>/dev/null
 
   # Re-apply theme
-  script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
-  : "${DOTFILES:=$(cd "$script_dir/.." &>/dev/null && pwd -P)}"
+  : "${DOTFILES:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd -P)}"
   bash "$DOTFILES/config/tmux/theme/theme.tmux" 2>/dev/null
 fi
 
