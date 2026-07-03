@@ -1,12 +1,13 @@
+.DS_Store
 .netrwhist
 npm-debug.log
+logs/
 config/nvim/spell
 config/nvim/shada
 vim/vim.symlink/spell/
 vim/vim.symlink/plugged/
 Brewfile.lock.json
 lazy-lock.json
-config/kitty/kitty-overrides.conf
 config/zsh/.zsh_history
 config/zsh/.zcompdump
 config/zsh/.zsh_sessions
@@ -19,6 +20,11 @@ config/karabiner/automatic_backups/
 home/.claude/*
 !home/.claude/settings.json
 !home/.claude/CLAUDE.md
+!home/.claude/skills/
+home/.claude/skills/*
+!home/.claude/skills/graphify/
+# never track runtime backups — they contain live credentials
+home/.claude/backups/
 
 # pi agent — track only config, ignore runtime data
 home/.pi/agent/auth.json
