@@ -23,6 +23,7 @@ home/.claude/*
 !home/.claude/skills/
 home/.claude/skills/*
 !home/.claude/skills/graphify/
+!home/.claude/themes/
 # never track runtime backups — they contain live credentials
 home/.claude/backups/
 
