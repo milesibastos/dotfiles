@@ -78,7 +78,6 @@ parse_params() {
       format="${2-}"
       shift
       ;;
-    -f | --flag) flag=1 ;; # example flag
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac

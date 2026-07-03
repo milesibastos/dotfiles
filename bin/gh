@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [[ "$*" == *"pr merge" ]]; then
-  echo "🚫 Blocked: merging requries human approval."
+if [[ " $* " == *" pr merge "* || "$*" == *"pr merge" ]]; then
+  echo "🚫 Blocked: merging requires human approval."
   exit 1
 fi
 
