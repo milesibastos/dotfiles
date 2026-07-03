@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
-: "${DOTFILES:=$(cd "$script_dir/.." &>/dev/null && pwd -P)}"
+: "${DOTFILES:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd -P)}"
+export DOTFILES
 
 echo -e "🧪 Setting up MCP for GPT-5...\n"
 claude mcp add gpt5-server --scope user -e OPENAI_API_KEY="$OPENAI_API_KEY" -- npx tsx "$DOTFILES/tools/gpt5-mcp-server/src/index.ts"

@@ -3,8 +3,8 @@
 
 set -Eeuo pipefail
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
-: "${DOTFILES:=$(cd "$script_dir/.." &>/dev/null && pwd -P)}"
+: "${DOTFILES:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd -P)}"
+export DOTFILES
 
 if [[ -f "$DOTFILES/bin/lib/common.sh" ]]; then
   source "$DOTFILES/bin/lib/common.sh"

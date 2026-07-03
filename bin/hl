@@ -7,16 +7,19 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 usage() {
   cat << EOF # remove the space between << and EOF, this is due to web plugin issue
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [-f] -p param_value arg1 [arg2...]
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [-f font] [-t theme] [-s size] [-l language] [-F format] [file]
 
-Script description here.
+Highlight code as RTF and copy it to the clipboard.
 
 Available options:
 
 -h, --help      Print this help and exit
 -v, --verbose   Print script debug info
--f, --flag      Some flag description
--p, --param     Some param description
+-f, --font      Font name (default: Monsapace Argon)
+-t, --theme     Highlight theme (default: Moria)
+-s, --size      Font size (default: 24)
+-l, --language  Source language (default: tsx)
+-F, --format    Output format (default: rtf)
 EOF
   exit
 }
