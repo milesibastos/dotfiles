@@ -148,7 +148,7 @@
     whitespace = nowarn
 [core]
     pager = delta
-    editor = vim
+    editor = nvim
     whitespace = cr-at-eol
 [delta]
     features = unobtrusive-line-numbers decorations
@@ -181,11 +181,8 @@
     instructionFormat = "[%an - %ar] %s"
     autoStash = true
 [credential "https://github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper =
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
-[user]
-	name = @milesibastos
-	email = antonio@milesibastos.com
+	helper =
+	helper = !gh auth git-credential
