@@ -87,12 +87,22 @@
       "Bash(dd *)",
       "Bash(diskutil *)",
       "Bash(mkfs *)",
+      "Bash(rm -rf /)",
       "Bash(rm -rf / *)",
       "Bash(rm -rf /* *)",
+      "Bash(rm -fr /)",
+      "Bash(rm -fr / *)",
+      "Bash(rm -rf ~)",
       "Bash(rm -rf ~ *)",
+      "Bash(rm -rf ~/)",
+      "Bash(rm -fr ~)",
+      "Bash(rm -rf $HOME)",
       "Bash(rm -rf $HOME *)",
+      "Bash(rm -rf $HOME/)",
+      "Bash(sudo rm -rf /)",
       "Bash(sudo rm -rf / *)",
-      "Bash(sudo rm -rf /* *)"
+      "Bash(sudo rm -rf /* *)",
+      "Bash(sudo rm -fr /)"
     ],
     "ask": [
       "Bash(gh pr merge *)",
@@ -104,6 +114,7 @@
       "~/.claude/"
     ]
   },
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "Notification": [
       {
@@ -390,7 +401,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
-  "advisorModel": "opus",
+  "advisorModel": "fable",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "teammateMode": "tmux",
