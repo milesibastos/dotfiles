@@ -34,7 +34,7 @@ pane_location() {
   [ -z "$path" ] && return
 
   local short="${path/#$HOME\//}"
-  short="${short/#Developer\//}"
+  short="${short/#workspaces\//}"
   [ "$short" = "$session" ] && return
   echo "$short"
 }

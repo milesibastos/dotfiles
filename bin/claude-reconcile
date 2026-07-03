@@ -97,7 +97,7 @@ done < <(agent_status_dirs)
 
 # Worktree pruning
 if $PRUNE_WORKTREES; then
-  for wt_dir in "$HOME"/Developer/*/.worktrees/*/; do
+  for wt_dir in "$HOME"/workspaces/*/*/.worktrees/*/; do
     [ -d "$wt_dir" ] || continue
     branch=$(git -C "$wt_dir" rev-parse --abbrev-ref HEAD 2>/dev/null)
     [ -z "$branch" ] && continue
