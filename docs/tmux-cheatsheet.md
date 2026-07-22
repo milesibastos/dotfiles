@@ -38,7 +38,6 @@ Windows auto-renumber, start at index 1, and auto-rename via
 | `prefix -` | Split vertically (cwd kept) |
 | `prefix h/j/k/l` | Move left/down/up/right |
 | `prefix H/J/K/L` | Resize by 10 (repeatable) |
-| `prefix y` | Toggle `synchronize-panes` |
 | Mouse | Enabled — click to focus, drag borders |
 
 Pane index starts at 1. `aggressive-resize` on (resize per-window, not per-session).
@@ -58,6 +57,7 @@ Pane index starts at 1. `aggressive-resize` on (resize per-window, not per-sessi
 | Key | Action |
 |-----|--------|
 | `prefix g` | lazygit in 80%×80% popup at current pane path |
+| `prefix u` | `ai-usagebar-tui` popup (80%×80%) |
 | `prefix y` | `claude-dashboard` popup (90%×50%) |
 | `prefix s` | `tm` session picker popup |
 | `prefix n` | `claude-next` — jump to next waiting agent pane |
