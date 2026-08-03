@@ -56,11 +56,17 @@ Pane index starts at 1. `aggressive-resize` on (resize per-window, not per-sessi
 
 | Key | Action |
 |-----|--------|
-| `prefix g` | lazygit in 80%×80% popup at current pane path |
-| `prefix u` | `ai-usagebar-tui` popup (80%×80%) |
-| `prefix y` | `claude-dashboard` popup (90%×50%) |
-| `prefix s` | `tm` session picker popup |
+| `prefix g` | lazygit responsive popup at current pane path |
+| `prefix G` | lazydocker responsive popup at current pane path |
+| `prefix u` | `ai-usagebar-tui` responsive popup |
+| `prefix y` | yazi responsive popup at current pane path |
+| `prefix s` | `tm` compact responsive session picker popup |
 | `prefix n` | `claude-next` — jump to next waiting agent pane |
+
+Full TUI popups use 80% of the client, capped at 240×60 cells. The compact
+session picker uses 60%×70%, capped at 160×40. A dimension below 100 columns
+or 30 rows uses 90% in that direction. `tmux-popup --print-size` shows the
+calculated dimensions for the current client.
 
 ## Terminal & keys
 
@@ -96,7 +102,7 @@ sessions; hooks auto-toggle it on/off as windows are added/removed.
 
 Referenced from `tmux.conf` / `theme.tmux`:
 
-- `tm` — session picker
+- `tm`, `tmux-popup` — session picker and responsive popup sizing
 - `claude-dashboard`, `claude-next`, `claude-reconcile`, `agent-status`
 - `tmux-smart-name`, `tmux-git-status`, `current-song`
 

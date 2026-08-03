@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+profile="default"
+client=""
+directory=""
+print_size=false
+
+usage() {
+  printf 'Usage: tmux-popup [--compact] [--client CLIENT] [--directory DIR] [--print-size] [--] COMMAND [ARG ...]\n' >&2
+}
+
+while (($#)); do
+  case "$1" in
+  --compact)
+    profile="compact"
+    shift
+    ;;
+  --client)
+    (($# >= 2)) || {
+      usage
+      exit 2
+    }
+    client="$2"
+    shift 2
+    ;;
+  --directory)
+    (($# >= 2)) || {
+      usage
+      exit 2
+    }
+    directory="$2"
+    shift 2
+    ;;
+  --print-size)
+    print_size=true
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    usage
+    exit 2
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+size_format='#{client_width} #{client_height}'
+if [[ -n "$client" ]]; then
+  client_size=$(tmux display-message -p -c "$client" "$size_format")
+else
+  client_size=$(tmux display-message -p "$size_format")
+fi
+read -r client_width client_height <<<"$client_size"
+
+if [[ ! "$client_width" =~ ^[0-9]+$ || ! "$client_height" =~ ^[0-9]+$ ]]; then
+  printf 'tmux-popup: could not determine client size\n' >&2
+  exit 1
+fi
+
+if [[ "$profile" == "compact" ]]; then
+  width_percent=60
+  height_percent=70
+  max_width=160
+  max_height=40
+else
+  width_percent=80
+  height_percent=80
+  max_width=240
+  max_height=60
+fi
+
+# Small terminals need more of their available space to remain usable.
+((client_width < 100)) && width_percent=90
+((client_height < 30)) && height_percent=90
+
+popup_width=$((client_width * width_percent / 100))
+popup_height=$((client_height * height_percent / 100))
+((popup_width > max_width)) && popup_width=$max_width
+((popup_height > max_height)) && popup_height=$max_height
+
+if $print_size; then
+  printf '%sx%s\n' "$popup_width" "$popup_height"
+  exit 0
+fi
+
+(($#)) || {
+  usage
+  exit 2
+}
+
+popup_args=(display-popup -E -w "$popup_width" -h "$popup_height")
+[[ -n "$client" ]] && popup_args+=(-c "$client")
+[[ -n "$directory" ]] && popup_args+=(-d "$directory")
+
+exec tmux "${popup_args[@]}" "$@"
