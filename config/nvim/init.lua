@@ -6,5 +6,6 @@
 local nisi = require("nisi")
 nisi.setup({
   python = true,
+  prefer_git = true,
   transparent = true,
 })

@@ -1,10 +1,8 @@
 local lsp_utils = require("nisi.plugins.lsp.utils")
 local make_conf = lsp_utils.make_conf
-local mason = require("mason")
 local mason_lspconfig = require("mason-lspconfig")
 local utils = require("nisi.utils")
 local fn = utils.fn
-local border = "rounded"
 local servers = {
   "eslint",
   "elixirls",
@@ -16,7 +14,6 @@ local servers = {
   "intelephense",
   "tailwindcss",
   "jsonls",
-  "ruby_lsp",
   "pylsp",
   "vimls",
 }
@@ -66,8 +63,6 @@ function M.setup()
   vim.keymap.set("n", "[d", fn(vim.diagnostic.jump, { count = -1 }), { desc = "Go to previous diagnostic" })
   vim.keymap.set("n", "]d", fn(vim.diagnostic.jump, { count = 1 }), { desc = "Go to next diagnostic" })
   vim.keymap.set("n", "<leader>aq", vim.diagnostic.setloclist, { desc = "Send diagnostics to loclist" })
-
-  mason.setup({ ui = { border = border } })
 
   vim.diagnostic.config({
     signs = {

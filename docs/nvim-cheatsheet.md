@@ -97,7 +97,7 @@ Leader key is `,`. `jk` exits insert mode.
 | `RightMouse` | Context menu |
 
 Servers (via mason-lspconfig): eslint, elixirls, ts_ls, lua_ls, denols,
-astro, gopls, intelephense, tailwindcss, jsonls, ruby_lsp, pylsp, vimls.
+astro, gopls, intelephense, tailwindcss, jsonls, pylsp, vimls.
 
 ## Formatting (conform.nvim, format-on-save)
 
