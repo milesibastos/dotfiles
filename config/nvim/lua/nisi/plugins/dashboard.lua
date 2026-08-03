@@ -51,7 +51,13 @@ return {
           end,
         },
         function()
-          local in_git = Snacks.git.get_root() ~= nil
+          local git_root = Snacks.git.get_root()
+          local in_git = git_root ~= nil
+          local has_github_remote = false
+          if git_root then
+            local remotes = vim.system({ "git", "-C", git_root, "remote", "-v" }, { text = true }):wait()
+            has_github_remote = remotes.code == 0 and remotes.stdout:find("github.com", 1, true) ~= nil
+          end
           local cmds = {
             {
               title = "Notifications",
@@ -73,6 +79,7 @@ return {
               end,
               icon = " ",
               height = 7,
+              enabled = has_github_remote,
             },
             {
               icon = " ",
@@ -83,6 +90,7 @@ return {
                 vim.fn.jobstart("gh pr list --web", { detach = true })
               end,
               height = 7,
+              enabled = has_github_remote,
             },
             {
               icon = " ",
