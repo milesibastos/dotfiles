@@ -55,6 +55,26 @@ for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin $HOME/.opencode/bin 
     test -d $dir; and fish_add_path -pP $dir
 end
 
+# ── SSH agent (remote sessions) ─────────────────────────────────
+# Over SSH the login keychain stays locked, so `UseKeychain` can't hand ssh a
+# key passphrase and every git call re-prompts. Keep one agent per host on a
+# fixed socket, so the passphrase is typed once per boot instead of once per
+# command. GUI sessions already inherit launchd's agent — leave those alone.
+# Sits above the interactive guard so `ssh host "git ..."` one-shots get it too.
+if set -q SSH_CONNECTION
+    # ssh-add exits 2 when no agent is reachable, 1 when one is but holds no key.
+    ssh-add -l >/dev/null 2>&1
+    if test $status -eq 2
+        # Nothing forwarded by `ssh -A`; fall back to this host's own agent.
+        set -gx SSH_AUTH_SOCK $HOME/.ssh/agent.sock
+        ssh-add -l >/dev/null 2>&1
+        if test $status -eq 2
+            rm -f $SSH_AUTH_SOCK
+            ssh-agent -a $SSH_AUTH_SOCK >/dev/null 2>&1
+        end
+    end
+end
+
 # ── Interactive-only setup ──────────────────────────────────────
 if not status is-interactive
     exit 0
@@ -133,25 +153,6 @@ alias cc='claude'
 # forms as abbreviations instead. Expands at the command line.
 abbr -a 'claude!' claude --dangerously-skip-permissions
 abbr -a 'cc!' claude --dangerously-skip-permissions
-
-# ── SSH agent (remote sessions) ─────────────────────────────────
-# Over SSH the login keychain stays locked, so `UseKeychain` can't hand ssh a
-# key passphrase and every git call re-prompts. Keep one agent per host on a
-# fixed socket, so the passphrase is typed once per boot instead of once per
-# command. GUI sessions already inherit launchd's agent — leave those alone.
-if set -q SSH_CONNECTION
-    # ssh-add exits 2 when no agent is reachable, 1 when one is but holds no key.
-    ssh-add -l >/dev/null 2>&1
-    if test $status -eq 2
-        # Nothing forwarded by `ssh -A`; fall back to this host's own agent.
-        set -gx SSH_AUTH_SOCK $HOME/.ssh/agent.sock
-        ssh-add -l >/dev/null 2>&1
-        if test $status -eq 2
-            rm -f $SSH_AUTH_SOCK
-            ssh-agent -a $SSH_AUTH_SOCK >/dev/null 2>&1
-        end
-    end
-end
 
 # ── Prompt ──────────────────────────────────────────────────────
 set -gx STARSHIP_CONFIG $XDG_CONFIG_HOME/starship/starship.toml
