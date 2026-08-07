@@ -66,5 +66,6 @@ brew 'tmux'                            # terminal multiplexer
 brew 'tree'                            # pretty-print directory contents
 brew 'wdiff'                           # word differences in text files
 brew 'wget'                            # internet file retriever
+brew 'yazi'                            # terminal file manager (config in config/yazi)
 brew 'zoxide'                          # switch between most used directories
 brew 'sesh' # terminal session manager
