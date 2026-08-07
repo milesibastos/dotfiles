@@ -13,4 +13,21 @@ if [ -n "${TMUX:-}" ] && [ -n "$tmux_cmd" ]; then
   exec "$tmux_cmd" load-buffer -w -
 fi
 
+# Over ssh there is no local tmux, and /usr/bin/pbcopy would land the text in
+# the *remote* machine's clipboard — invisible from the laptop we are typing on.
+# Emit OSC 52 instead: the escape rides the ssh tty back to whatever terminal
+# (or tmux pane) is displaying this session, which then sets the real clipboard.
+# Needs `set-clipboard on` in tmux and a terminal that honours OSC 52 writes.
+# Payload travels inline, so very large inputs may be truncated by the terminal.
+if [ -n "${SSH_CONNECTION:-}" ]; then
+  payload=$(base64 | tr -d '\r\n')
+  # stdout is frequently redirected; the escape has to reach the terminal.
+  if [ -w /dev/tty ]; then
+    printf '\033]52;c;%s\a' "$payload" >/dev/tty
+  else
+    printf '\033]52;c;%s\a' "$payload"
+  fi
+  exit 0
+fi
+
 exec /usr/bin/pbcopy "$@"
