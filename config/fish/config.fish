@@ -167,4 +167,4 @@ test -f $HOME/.config/fish/config.local.fish; and source $HOME/.config/fish/conf
 fish_add_path -pmP $DOTFILES/bin $HOME/bin
 
 # opencode
-fish_add_path /Users/milesibastos/.opencode/bin
+fish_add_path $HOME/.opencode/bin
