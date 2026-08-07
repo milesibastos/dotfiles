@@ -18,6 +18,18 @@ for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/
   prepend_path $dir
 done
 
+# ssh forwards TERM but not COLORTERM, so remote sessions lose the truecolor
+# advertisement and TUIs drop to 256 colors. The ghostty/kitty terminfo entries
+# carry no RGB capability to detect this from, so key off the terminals this
+# repo actually targets. Only fills the gap — a terminal that already set it wins.
+if [[ -z $COLORTERM ]]; then
+  case $TERM in
+    xterm-ghostty|xterm-kitty|wezterm|alacritty|tmux-256color)
+      export COLORTERM=truecolor
+      ;;
+  esac
+fi
+
 # Over SSH the login keychain stays locked, so `UseKeychain` can't hand ssh a
 # key passphrase and every git call re-prompts. Keep one agent per host on a
 # fixed socket, so the passphrase is typed once per boot instead of once per

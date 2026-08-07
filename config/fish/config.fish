@@ -75,6 +75,17 @@ if set -q SSH_CONNECTION
     end
 end
 
+# ssh forwards TERM but not COLORTERM, so remote sessions lose the truecolor
+# advertisement and TUIs drop to 256 colours. The ghostty/kitty terminfo entries
+# carry no RGB capability to detect this from, so key off the terminals this
+# repo actually targets. Only fills the gap — a terminal that already set it wins.
+if not set -q COLORTERM
+    switch $TERM
+        case xterm-ghostty xterm-kitty wezterm alacritty tmux-256color
+            set -gx COLORTERM truecolor
+    end
+end
+
 # ── Interactive-only setup ──────────────────────────────────────
 if not status is-interactive
     exit 0
