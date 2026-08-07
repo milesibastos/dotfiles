@@ -197,6 +197,7 @@ update_zsh_plugins() {
 
   local cwd="$(pwd)"
   while IFS=: read -r name path; do
+    if [[ -z $path ]]; then continue; fi
     cd "$path" || { log_error "cannot enter $path"; return 1; }
 
     local before=$(git rev-parse HEAD)
@@ -214,7 +215,10 @@ update_zsh_plugins() {
     fi
 
     cd "$cwd" || { log_error "cannot return to $cwd"; return 1; }
-  done < <(zsh -ic 'for k in ${(k)plugins}; do echo "$k:$plugins[$k]"; done')
+  # `zsh -ic` runs an interactive shell, so the prompt writes the cwd to stdout
+  # alongside our data. Tag each real record and keep only the tagged lines.
+  done < <(zsh -ic 'for k in ${(k)plugins}; do echo "ZPLUGIN:$k:$plugins[$k]"; done' 2>/dev/null |
+    sed -n 's/^ZPLUGIN://p')
 
   echo -e
   log_success "ZSH Plugin updates completed."

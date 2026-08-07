@@ -35,9 +35,11 @@ setup_git() {
 
   local_config="$HOME/.gitconfig-local"
 
-  defaultName=$(git config user.name)
-  defaultEmail=$(git config user.email)
-  defaultGithub=$(git config github.user)
+  # `git config <key>` exits 1 when the key is unset — on a fresh machine that
+  # kills the script under `set -e` before any prompt is shown.
+  defaultName=$(git config user.name || true)
+  defaultEmail=$(git config user.email || true)
+  defaultGithub=$(git config github.user || true)
 
   read -rp "Name [$defaultName] " name
   read -rp "Email [$defaultEmail] " email

@@ -34,39 +34,63 @@ bin/dot git setup
 # 5. Apply macOS defaults (keyrepeat, dock, finder, etc.)
 bin/dot macos defaults
 
-# 6. Set default shell to zsh and install terminfo for tmux/nvim/ghostty
+# 6. Set default shell to fish and install terminfo for tmux/nvim/ghostty
+#    (`dot shell change` defaults to fish; pass 'zsh' to use zsh instead)
 bin/dot shell change
 bin/dot shell terminfo
 
 # 7. Reload shell so everything picks up
-exec zsh -l
+exec fish -l
 
 # 8. Plugins + tools
-#    - zsh plugins: auto-cloned on shell startup via zfetch (over HTTPS)
+#    - zsh plugins: auto-cloned on shell startup via zfetch (over SSH —
+#      needs a key on this machine)
 #    - everything else via one command:
 bin/dot update all
 #    This runs nvim Lazy sync, brew upgrade, dotfiles pull, zsh plugin
 #    updates, AND installs/updates Claude Code via Anthropic's native
 #    installer (no Homebrew cask — it lagged upstream by many versions).
-
-# 9. Optional: tmux plugins
-[ -x ~/.config/tmux/plugins/tpm/bin/install_plugins ] && \
-  ~/.config/tmux/plugins/tpm/bin/install_plugins
 ```
+
+The tmux config does not use tpm — there are no `@plugin` declarations in
+`config/tmux/`, so there is no plugin-install step.
 
 ## One-liner (after step 1)
 
 ```bash
 mkdir -p ~/.config && bin/dot link && bin/dot bootstrap && \
   bin/dot homebrew install && bin/dot git setup && bin/dot macos defaults && \
-  bin/dot shell change && bin/dot shell terminfo && exec zsh -l
+  bin/dot shell change && bin/dot shell terminfo && exec fish -l
 ```
 
 Interactive prompts:
 
 - `bin/dot homebrew install` — macOS password for cask installs (Ghostty, Aerospace, Karabiner-Elements, etc.) that copy into `/Applications`
 - `bin/dot git setup` — name / email / GitHub username
-- `bin/dot shell change` — your user password for `chsh`
+- `bin/dot shell change` — sudo password (to add the shell to `/etc/shells`), then your user password for `chsh`
+
+## Homebrew 6.x: third-party taps need `brew trust`
+
+Homebrew 6 refuses to load formulae and casks from untrusted taps, so
+`brew bundle` aborts on the Brewfile's two third-party taps:
+
+```bash
+brew trust --tap felixkratz/formulae   # borders
+brew trust --tap 1password/tap         # 1password-cli
+```
+
+Trust is recorded in `~/.homebrew/trust.json` — per-user, not machine-wide.
+Run these before `bin/dot homebrew install` on a fresh machine.
+
+To skip packages instead of trusting them, `brew bundle` reads
+`HOMEBREW_BUNDLE_BREW_SKIP` / `HOMEBREW_BUNDLE_CASK_SKIP` (space-separated):
+
+```bash
+HOMEBREW_BUNDLE_CASK_SKIP="karabiner-elements aerospace" bin/dot homebrew install
+```
+
+Useful on a shared machine, where Karabiner-Elements (system driver, Input
+Monitoring) and Aerospace (tiling WM) affect every account, not just yours.
 
 ## Ongoing maintenance
 
@@ -94,10 +118,11 @@ If this user was created as an isolated workspace via
   installed brew. `bin/dot update all` detects this and skips the
   Homebrew step with a warning — no failure. Install new packages from
   the admin user; the isolated user sees them automatically.
-- **SSH keys are empty.** All git clones (dotfiles itself, zsh plugins
-  via `zfetch`) use HTTPS, so no key setup is required for the first
-  pass. Generate per-workspace SSH keys only if you'll be pushing from
-  this account.
+- **SSH keys are empty.** The dotfiles repo itself can be cloned over
+  HTTPS (step 1), but `zfetch` clones zsh plugins over SSH, so the first
+  interactive zsh needs a key on the machine. Generate a per-workspace
+  key before then — and in any case if you'll be pushing from this
+  account.
 - **Git identity** may inherit the dotfiles' defaults. After
   `bin/dot git setup`, override if needed:
   ```bash
@@ -125,7 +150,8 @@ Common first-run pitfalls, resolved in the codebase but worth knowing:
 |---|---|---|
 | `DOTFILES: unbound variable` | `.zshenv` hasn't been linked yet | `bin/dot` and all `dot-*` commands self-derive `$DOTFILES` from their own path |
 | `ln: ~/.config/aerospace: No such file or directory` | `~/.config` didn't exist on fresh user | `bin/dot link` now `mkdir -p`s parent dirs automatically — and step 2 above pre-creates `~/.config` |
-| `zfetch: command not found: git clone --quiet` on plugin clone | SSH URL + no key; also a zsh word-splitting bug | `zfetch` now uses HTTPS and an array for clone args |
+| `zfetch: command not found: git clone --quiet` on plugin clone | zsh word-splitting bug | `zfetch` uses an array for clone args |
+| `zfetch` clone fails with `Permission denied (publickey)` | `zfetch` clones over SSH (`git@github.com:`, see `config/zsh/.zsh_functions`) — it needs a key on the machine | Set up an SSH key before the first interactive zsh, or clone the plugins by hand |
 | `compinit: insecure directories and files` | Homebrew owns `/opt/homebrew/share/zsh` as a specific admin user, not root | Dotfiles' `.zshrc` uses `compinit -u` to trust fpath dirs on a single-user laptop |
 | `tput: unknown terminal "xterm-ghostty"` | Ghostty terminfo is per-user, not system-wide | `bin/dot bootstrap` copies it into `~/.terminfo` |
 | `nisi.plugins.extras.fzf … attempt to concatenate field 'HOMEBREW_PREFIX'` | nvim launched from a shell that didn't `eval $(brew shellenv)` | Plugin detects Homebrew prefix via env / `brew --prefix` / known paths |
@@ -134,7 +160,7 @@ Common first-run pitfalls, resolved in the codebase but worth knowing:
 | `telescope-fzf-native … cmake: command not found` | cmake missing from Brewfile | Added |
 | `sniprun … Could not find cargo` | rust toolchain missing | Added `brew 'rust'` |
 | `claude update` → "up to date" but outdated | Homebrew cask lagged npm by ~16 versions | Removed cask; install via Anthropic's native installer, handled automatically by `bin/dot update claude` |
-| `~/.local/bin is not in your PATH` after Claude install | `.zshrc`'s `prepend_path` skips non-existent dirs; first shell ran before the dir was created | `bin/dot bootstrap` pre-creates `~/.local/bin` so future shells pick it up; for a running shell, `exec zsh -l` |
+| `~/.local/bin is not in your PATH` after Claude install | `.zshrc`'s `prepend_path` skips non-existent dirs; first shell ran before the dir was created | `bin/dot bootstrap` pre-creates `~/.local/bin` so future shells pick it up; for a running shell, `exec fish -l` (or `exec zsh -l`) |
 
 ## Clean-slate removal
 
