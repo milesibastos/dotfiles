@@ -79,7 +79,15 @@ brew trust --tap felixkratz/formulae   # borders
 brew trust --tap 1password/tap         # 1password-cli
 ```
 
-Trust is recorded in `~/.homebrew/trust.json` — per-user, not machine-wide.
+Trust is per-user, not machine-wide — but **where** it is recorded depends on
+the environment: `$XDG_CONFIG_HOME/homebrew/trust.json` when that variable is
+set, `~/.homebrew/trust.json` otherwise. These dotfiles export
+`XDG_CONFIG_HOME`, so trusting a tap from a bare shell during bootstrap (before
+the shell config is live) writes to the fallback path, and the same tap reads
+as untrusted once you are in a configured fish/zsh session. Re-run `brew trust`
+from the configured shell if `brew bundle` starts refusing a tap it already
+accepted.
+
 Run these before `bin/dot homebrew install` on a fresh machine.
 
 To skip packages instead of trusting them, `brew bundle` reads
