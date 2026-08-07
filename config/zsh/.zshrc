@@ -18,6 +18,25 @@ for dir in $HOME/.bun/bin $HOME/.cargo/bin $HOME/.local/bin /usr/local/opt/grep/
   prepend_path $dir
 done
 
+# Over SSH the login keychain stays locked, so `UseKeychain` can't hand ssh a
+# key passphrase and every git call re-prompts. Keep one agent per host on a
+# fixed socket, so the passphrase is typed once per boot instead of once per
+# command. GUI sessions already inherit launchd's agent — leave those alone.
+# Must run before zfetch below, which clones plugins over SSH.
+if [[ -n $SSH_CONNECTION ]]; then
+  # ssh-add exits 2 when no agent is reachable, 1 when one is but holds no key.
+  ssh-add -l &>/dev/null
+  if [[ $? -eq 2 ]]; then
+    # Nothing forwarded by `ssh -A`; fall back to this host's own agent.
+    export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+    ssh-add -l &>/dev/null
+    if [[ $? -eq 2 ]]; then
+      rm -f "$SSH_AUTH_SOCK"
+      ssh-agent -a "$SSH_AUTH_SOCK" &>/dev/null
+    fi
+  fi
+fi
+
 # define the code directory
 # This is where my code exists and where I want the `c` autocomplete to work from exclusively
 if [[ -d ~/code ]]; then
