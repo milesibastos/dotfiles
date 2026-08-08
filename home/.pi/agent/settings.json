@@ -1,9 +1,9 @@
 {
-  "defaultProvider": "openai-codex",
+  "defaultProvider": "opencode-go",
   "theme": "catppuccin-mocha",
   "quietStartup": true,
   "hideThinkingBlock": true,
-  "lastChangelogVersion": "0.70.2",
+  "lastChangelogVersion": "0.79.9",
   "skills": [
     "~/.claude/skills",
     "~/Developer/claude-plugins/plugins/consultant/skills",
@@ -11,7 +11,7 @@
     "~/Developer/claude-plugins/plugins/essentials/skills",
     "~/Developer/claude-plugins/plugins/meta/skills"
   ],
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "enabledModels": [
     "openai-codex/gpt-5.5",
     "baseten/moonshotai/Kimi-K2.5",
@@ -23,5 +23,5 @@
     "npm:@nicknisi/pi-ideation",
     "npm:pi-prompt-template-model"
   ],
-  "defaultModel": "gpt-5.5"
+  "defaultModel": "glm-5.2"
 }
