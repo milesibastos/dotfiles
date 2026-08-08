@@ -64,7 +64,7 @@ dot update all        # nvim plugins, brew, zsh plugins, dotfiles pull, Claude C
 Everything runs inside tmux. The status bar shows git state (`bin/tmux-git-status`), smart window names (`bin/tmux-smart-name`), and live Claude Code agent status. The `claude-*` scripts in `bin/` form an agent-monitoring system:
 
 - `claude-status-hook` — writes per-pane status files from Claude Code hooks (wired in `home/.claude/settings.json`)
-- `claude-statusline` — Claude Code status line with context/usage bars
+- `claude-statusline` — Claude Code status line (path, branch, cost, context remaining, session id)
 - `agent-status` / `claude-dashboard` / `claude-next` / `claude-smart-switch` — tmux status glyphs, fzf dashboard, and pane navigation across running agents
 - `claude-reconcile` / `claude-tmux-cleanup` — garbage-collect stale state and reset pane borders
 

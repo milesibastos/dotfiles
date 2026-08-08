@@ -21,17 +21,13 @@ ICON_BRANCH="${GREEN}${RESET}"     # \ue725
 ICON_CONTEXT="${MAGENTA}󰧑${RESET}"  # \U000f09d1
 ICON_COST="${GREEN}${RESET}"       # \uf155
 ICON_STYLE="${CYAN}󰏘${RESET}"       # \U000f03d8
-ICON_USAGE="${YELLOW}󰉁${RESET}"     # \U000f0241
 ICON_LINES="${CYAN}${RESET}"       # \uf440
 ICON_AGENT="${DIM}󰚩${RESET}"        # \U000f06a9
+ICON_SESSION="${DIM}${RESET}"     # \uf292
 
-# Feature flags (set env vars to 0 to disable)
-SHOW_CONTEXT_TOKENS="${CLAUDE_STATUSLINE_TOKENS:-1}"
-SHOW_USAGE="${CLAUDE_STATUSLINE_USAGE:-1}"
-
-# Usage limits config
-USAGE_CACHE_TTL="${CLAUDE_STATUSLINE_USAGE_TTL:-120}"
-USAGE_CACHE_DIR="${TMPDIR:-/tmp}/claude-statusline-cache"
+# Feature flags
+SHOW_CONTEXT_TOKENS="${CLAUDE_STATUSLINE_TOKENS:-1}"  # 0 hides the (used/total) suffix
+SHOW_SESSION_FULL="${CLAUDE_STATUSLINE_SESSION_FULL:-0}"  # 1 shows the full session UUID
 
 # Read JSON input from stdin
 input=$(cat)
@@ -50,11 +46,13 @@ get_model_icon() {
   esac
 }
 get_output_style() { echo "$input" | jq -r '.output_style.name // "default"'; }
-get_current_dir() { echo "$input" | jq -r '.workspace.current_dir // "."'; }
-get_project_dir() { echo "$input" | jq -r '.workspace.project_dir // "."'; }
+get_current_dir() { echo "$input" | jq -r '.workspace.current_dir // .cwd // "."'; }
 get_cost() {
   local cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-  printf "${DIM}\$%.2f${RESET}" "$cost"
+  local formatted
+  formatted=$(printf "%.2f" "$cost" 2>/dev/null) || return
+  [ "$formatted" = "0.00" ] && return
+  printf "${DIM}\$%s${RESET}" "$formatted"
 }
 
 get_lines_changed() {
@@ -68,205 +66,66 @@ get_agent_name() {
   echo "$input" | jq -r '.agent.name // empty'
 }
 
-get_context_percent() {
-  # Use pre-calculated percentage from Claude Code (recommended approach)
-  local percent=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
-  # Round to integer for display
-  printf "%.0f" "$percent"
-}
-
-get_context_used() {
-  # Calculate tokens from percentage and window size (most accurate)
-  local percent=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
-  local window=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
-  local used=$(echo "$percent * $window / 100" | bc)
-  if [ "$used" -ge 1000 ]; then
-    printf "%.0fK" "$(echo "scale=0; $used / 1000" | bc)"
+# Session id — short prefix by default, full UUID when the flag is set
+get_session_id() {
+  local id
+  id=$(echo "$input" | jq -r '.session_id // empty')
+  [ -n "$id" ] || return
+  if [ "$SHOW_SESSION_FULL" = "1" ]; then
+    printf "%s" "$id"
   else
-    printf "%d" "$used"
+    printf "%s" "${id:0:8}"
   fi
 }
 
-# Build a progress bar with color based on percentage
-build_context_bar() {
-  local used=$(get_context_percent)
-  local remaining=$((100 - used))
-  local bar_width=5
-  local filled=$((remaining * bar_width / 100))
-  local empty=$((bar_width - filled))
+# Compact token count: 850 → 850, 123456 → 123K, 1000000 → 1M
+format_tokens() {
+  local n="$1"
+  if [ "$n" -ge 1000000 ]; then
+    local whole=$((n / 1000000))
+    local frac=$(((n % 1000000) / 100000))
+    if [ "$frac" -gt 0 ]; then
+      printf "%d.%dM" "$whole" "$frac"
+    else
+      printf "%dM" "$whole"
+    fi
+  elif [ "$n" -ge 1000 ]; then
+    printf "%dK" $((n / 1000))
+  else
+    printf "%d" "$n"
+  fi
+}
 
-  [ "$filled" -gt "$bar_width" ] && filled=$bar_width && empty=0
-  [ "$filled" -lt 0 ] && filled=0 && empty=$bar_width
+# Context remaining, e.g. "87% (123K/1M)" — color-coded on the percentage
+build_context_display() {
+  # Pre-calculated by Claude Code; null until the first API response
+  local remaining used window
+  remaining=$(echo "$input" | jq -r '.context_window.remaining_percentage // 100')
+  used=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
+  window=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
 
-  local bar_color
+  remaining=$(printf "%.0f" "$remaining" 2>/dev/null) || remaining=100
+  used=$(printf "%.0f" "$used" 2>/dev/null) || used=0
+  window=$(printf "%.0f" "$window" 2>/dev/null) || window=200000
+
+  [ "$remaining" -gt 100 ] && remaining=100
+  [ "$remaining" -lt 0 ] && remaining=0
+
+  local color
   if [ "$remaining" -gt 50 ]; then
-    bar_color="$GREEN"
+    color="$GREEN"
   elif [ "$remaining" -gt 20 ]; then
-    bar_color="$YELLOW"
+    color="$YELLOW"
   else
-    bar_color="$RED"
+    color="$RED"
   fi
-
-  local bar=""
-  for ((i = 0; i < filled; i++)); do bar+="━"; done
-  for ((i = 0; i < empty; i++)); do bar+="╌"; done
 
   if [ "$SHOW_CONTEXT_TOKENS" = "1" ]; then
-    local tokens=$(get_context_used)
-    printf "%s%s%s %d%% ${DIM}(%s)${RESET}" "$bar_color" "$bar" "$RESET" "$remaining" "$tokens"
+    printf "%s%d%%${RESET} ${DIM}(%s/%s)${RESET}" \
+      "$color" "$remaining" "$(format_tokens "$used")" "$(format_tokens "$window")"
   else
-    printf "%s%s%s %d%%" "$bar_color" "$bar" "$RESET" "$remaining"
+    printf "%s%d%%${RESET}" "$color" "$remaining"
   fi
-}
-
-# ── Usage limits ──────────────────────────────────────────────────────────────
-
-get_oauth_token() {
-  local creds
-  creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null) || return 1
-  echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty'
-}
-
-# Format ISO 8601 timestamp to human-readable time-until string
-format_time_until() {
-  local resets_at="$1"
-  [ -z "$resets_at" ] && echo "?" && return
-
-  local reset_epoch
-  # Normalize: strip +00:00 → Z, strip fractional seconds (.943648)
-  local normalized="${resets_at/+00:00/Z}"
-  normalized=$(echo "$normalized" | sed 's/\.[0-9]*Z/Z/')
-  reset_epoch=$(date -u -jf "%Y-%m-%dT%H:%M:%SZ" "$normalized" "+%s" 2>/dev/null) \
-    || { echo "?"; return; }
-
-  local now
-  now=$(date "+%s")
-  if [ "$now" -ge "$reset_epoch" ]; then
-    echo "now"
-    return
-  fi
-
-  local secs=$((reset_epoch - now))
-  local mins=$((secs / 60))
-  local hours=$((mins / 60))
-  local days=$((hours / 24))
-
-  if [ "$days" -gt 0 ]; then
-    printf "%dd%dh" "$days" $((hours % 24))
-  elif [ "$hours" -gt 0 ]; then
-    printf "%dh%dm" "$hours" $((mins % 60))
-  else
-    printf "%dm" "$mins"
-  fi
-}
-
-# Read cached usage data if fresh enough
-read_usage_cache() {
-  local cache_file="${USAGE_CACHE_DIR}/usage.json"
-  [ -f "$cache_file" ] || return 1
-
-  local file_age
-  local file_mod
-  file_mod=$(stat -f "%m" "$cache_file" 2>/dev/null) || return 1
-  local now
-  now=$(date "+%s")
-  file_age=$((now - file_mod))
-
-  [ "$file_age" -lt "$USAGE_CACHE_TTL" ] || return 1
-  cat "$cache_file"
-}
-
-# Fetch usage from API and write to cache
-fetch_usage() {
-  local token
-  token=$(get_oauth_token) || return 1
-  [ -n "$token" ] || return 1
-
-  mkdir -p "$USAGE_CACHE_DIR"
-
-  local response
-  response=$(curl -s --max-time 3 \
-    -H "Authorization: Bearer $token" \
-    -H "anthropic-beta: oauth-2025-04-20" \
-    "https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || return 1
-
-  # Validate response is well-formed (any known key present)
-  echo "$response" | jq -e 'has("five_hour")' >/dev/null 2>&1 || return 1
-
-  echo "$response" > "${USAGE_CACHE_DIR}/usage.json"
-  echo "$response"
-}
-
-# Read stale cache (ignores TTL)
-read_stale_cache() {
-  local cache_file="${USAGE_CACHE_DIR}/usage.json"
-  [ -f "$cache_file" ] && cat "$cache_file"
-}
-
-# Get usage data (cache-first, then fetch, then stale fallback)
-get_usage_data() {
-  local data
-  data=$(read_usage_cache) && echo "$data" && return
-  data=$(fetch_usage) && echo "$data" && return
-  read_stale_cache
-}
-
-# Build a mini usage bar for a single window
-# Args: $1=remaining_pct (0-100), $2=label ("5h"/"7d"), $3=time_until
-build_usage_bar() {
-  local remaining="$1" label="$2" time_until="$3"
-  local bar_width=5
-  local filled=$((remaining * bar_width / 100))
-  local empty=$((bar_width - filled))
-
-  [ "$filled" -gt "$bar_width" ] && filled=$bar_width && empty=0
-  [ "$filled" -lt 0 ] && filled=0 && empty=$bar_width
-
-  local bar_color
-  if [ "$remaining" -gt 50 ]; then
-    bar_color="$GREEN"
-  elif [ "$remaining" -gt 20 ]; then
-    bar_color="$YELLOW"
-  else
-    bar_color="$RED"
-  fi
-
-  local bar=""
-  for ((i = 0; i < filled; i++)); do bar+="━"; done
-  for ((i = 0; i < empty; i++)); do bar+="╌"; done
-
-  printf "${DIM}%s${RESET} %s%s%s %d%% ${DIM}↻%s${RESET}" \
-    "$label" "$bar_color" "$bar" "$RESET" "$remaining" "$time_until"
-}
-
-# Build usage display string
-build_usage_display() {
-  [ "$SHOW_USAGE" = "1" ] || return
-
-  local data
-  data=$(get_usage_data) || return
-
-  local five_used seven_used five_reset seven_reset
-  five_used=$(echo "$data" | jq -r '.five_hour.utilization // 0' | xargs printf "%.0f")
-  seven_used=$(echo "$data" | jq -r '.seven_day.utilization // 0' | xargs printf "%.0f")
-  five_reset=$(echo "$data" | jq -r '.five_hour.resets_at // empty')
-  seven_reset=$(echo "$data" | jq -r '.seven_day.resets_at // empty')
-
-  # No active rate windows (e.g., enterprise billing) — nothing to show
-  [ -z "$five_reset" ] && [ -z "$seven_reset" ] && return
-
-  local five_remaining=$((100 - five_used))
-  local seven_remaining=$((100 - seven_used))
-
-  local five_until seven_until
-  five_until=$(format_time_until "$five_reset")
-  seven_until=$(format_time_until "$seven_reset")
-
-  local five_bar seven_bar
-  five_bar=$(build_usage_bar "$five_remaining" "5h" "$five_until")
-  seven_bar=$(build_usage_bar "$seven_remaining" "7d" "$seven_until")
-
-  printf "%s ${DIM}╱${RESET} %s" "$five_bar" "$seven_bar"
 }
 
 # Extract values
@@ -274,19 +133,14 @@ model=$(get_model_name)
 model_icon=$(get_model_icon)
 output_style=$(get_output_style)
 current_dir=$(get_current_dir)
-project_dir=$(get_project_dir)
 cost_display=$(get_cost)
-context_bar=$(build_context_bar)
-usage_display=$(build_usage_display)
+context_display=$(build_context_display)
 lines_display=$(get_lines_changed)
 agent_name=$(get_agent_name)
+session_id=$(get_session_id)
 
-# Get project name and handle subdirectory display
-project=$(basename "$project_dir")
-if [ "$current_dir" != "$project_dir" ]; then
-  subdir=$(basename "$current_dir")
-  project="${project} (CWD: ${subdir}/)"
-fi
+# Contract $HOME to ~ for a shorter path
+display_dir="${current_dir/#$HOME/~}"
 
 # Get git branch
 git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "no-git")
@@ -317,7 +171,7 @@ if [ -n "$agent_name" ]; then
 fi
 
 # ── Session impact ──
-if [ "$cost_display" != "\$0.00" ]; then
+if [ -n "$cost_display" ]; then
   seg_add "${ICON_COST} ${cost_display}"
 fi
 if [ -n "$lines_display" ]; then
@@ -325,19 +179,22 @@ if [ -n "$lines_display" ]; then
 fi
 
 # ── Resource gauges ──
-seg_add "${ICON_CONTEXT} ${context_bar}"
-if [ -n "$usage_display" ]; then
-  seg_add "${ICON_USAGE} ${usage_display}"
-fi
+seg_add "${ICON_CONTEXT} ${context_display}"
 
 # ── Meta (collapsible) ──
 if [ "$term_width" -gt 160 ] && [ "$output_style" != "default" ]; then
   seg_add "${ICON_STYLE} ${DIM}${output_style}${RESET}"
+fi
+if [ -n "$session_id" ]; then
+  seg_add "${ICON_SESSION} ${DIM}${session_id}${RESET}"
 fi
 
 # Prepend branch on wide terminals
 if [ "$term_width" -gt 120 ]; then
   statusline="${ICON_BRANCH} ${GREEN}${git_branch}${RESET} ${SEP} ${statusline}"
 fi
+
+# Prepend the current path
+statusline="${ICON_PROJECT} ${BLUE}${display_dir}${RESET} ${SEP} ${statusline}"
 
 echo -e "$statusline"
