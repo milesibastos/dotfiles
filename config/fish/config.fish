@@ -176,6 +176,3 @@ test -f $HOME/.config/fish/config.local.fish; and source $HOME/.config/fish/conf
 # mise is already activated above (guarded); only the PATH reorder is needed here.
 # Order matches .zshenv/.zprofile: $DOTFILES/bin first, then $HOME/bin.
 fish_add_path -pmP $DOTFILES/bin $HOME/bin
-
-# opencode
-fish_add_path $HOME/.opencode/bin
