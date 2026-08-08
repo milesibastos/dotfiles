@@ -1,0 +1,288 @@
+#!/usr/bin/env bash
+# Description: Set up pass for headless / non-interactive use
+
+set -Eeuo pipefail
+
+# Derive DOTFILES from script location when unset (first-run / isolated shells)
+: "${DOTFILES:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd -P)}"
+export DOTFILES
+
+source "$DOTFILES/bin/lib/common.sh"
+setup_colors
+command_name=$(basename "${BASH_SOURCE[0]}")
+
+# Stable uid, so setup can tell "already done" from "needs doing".
+AGENT_EMAIL="pass-agent@$(hostname -s)"
+AGENT_NAME="pass agent (headless, no passphrase)"
+AGENT_SUBDIR="agent"
+
+usage() {
+  cat <<EOF
+  $(fmt_key "Usage:") $(fmt_key "$command_name") $(fmt_value "<command> [options]")
+
+  Make a GPG-backed \`pass\` store usable from sessions that have no terminal
+  (Claude Code, cron, detached scripts).
+
+  Two independent halves:
+
+  - $(fmt_cmd "agent/") subtree — encrypted to a second, passphrase-less key, so
+    entries there decrypt with zero interaction. The rest of the store stays
+    behind your main key. Put low-blast-radius, agent-consumed secrets here;
+    leave production credentials where they are.
+  - $(fmt_cmd "pass-unlock") — for everything outside $(fmt_cmd "agent/"), prompts for the
+    main passphrase in a tmux popup and primes the gpg-agent cache.
+
+$(fmt_key "Commands:")
+    setup [--cache-ttl SECONDS]   Create the agent key and init the agent/ subtree
+    status                        Report keys, gpg-id map, cache state
+    -h, --help                    Show this help message
+
+$(fmt_key "Notes:")
+    The agent key's secret is stored unprotected in ~/.gnupg. Anything
+    readable with it is only as safe as that directory.
+EOF
+}
+
+store_dir() { printf '%s\n' "${PASSWORD_STORE_DIR:-$HOME/.password-store}"; }
+
+fingerprint_of() {
+  gpg --list-keys --with-colons "$1" 2>/dev/null | awk -F: '/^fpr:/ {print $10; exit}'
+}
+
+have_secret_key() {
+  gpg --list-secret-keys --with-colons "$1" >/dev/null 2>&1
+}
+
+keygrips_of() {
+  gpg --list-secret-keys --with-colons --with-keygrip "$1" 2>/dev/null |
+    awk -F: '/^grp:/ {print $10}'
+}
+
+# gpg-agent KEYINFO line: S KEYINFO <grip> <type> <serial> <idstr> <cached> <protection> ...
+keyinfo_field() {
+  local grip="$1" field="$2"
+  gpg-connect-agent "keyinfo $grip" /bye 2>/dev/null |
+    awk -v f="$field" '/^S KEYINFO/ {print $f; exit}'
+}
+
+cmd_setup() {
+  local cache_ttl=""
+  while (($#)); do
+    case "$1" in
+    --cache-ttl)
+      (($# >= 2)) || {
+        log_error "--cache-ttl needs a value"
+        exit 2
+      }
+      cache_ttl="$2"
+      shift 2
+      ;;
+    *)
+      log_error "unknown setup option: $1"
+      exit 2
+      ;;
+    esac
+  done
+
+  fmt_title_underline "Setting up pass for headless use"
+
+  command -v pass >/dev/null || {
+    log_error "pass not found — brew install pass"
+    exit 1
+  }
+  command -v gpg >/dev/null || {
+    log_error "gpg not found — brew install gnupg"
+    exit 1
+  }
+
+  local store
+  store=$(store_dir)
+  [[ -f "$store/.gpg-id" ]] || {
+    log_error "no store at $store — run 'pass init <your-gpg-id>' first"
+    exit 1
+  }
+
+  local -a main_ids=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && main_ids+=("$line")
+  done <"$store/.gpg-id"
+  ((${#main_ids[@]} > 0)) || {
+    log_error "$store/.gpg-id is empty"
+    exit 1
+  }
+  log_info "main gpg-id: ${main_ids[*]}"
+
+  # 1. Agent key — passphrase-less, so decryption never needs a prompt.
+  if have_secret_key "$AGENT_EMAIL"; then
+    log_info "agent key already present: $AGENT_EMAIL"
+  else
+    log_info "generating agent key: $AGENT_EMAIL"
+    gpg --batch --gen-key >/dev/null 2>&1 <<EOF
+Key-Type: eddsa
+Key-Curve: ed25519
+Key-Usage: sign
+Subkey-Type: ecdh
+Subkey-Curve: cv25519
+Subkey-Usage: encrypt
+Name-Real: $AGENT_NAME
+Name-Email: $AGENT_EMAIL
+Expire-Date: 0
+%no-protection
+%commit
+EOF
+    have_secret_key "$AGENT_EMAIL" || {
+      log_error "agent key generation failed"
+      exit 1
+    }
+    log_success "agent key created"
+  fi
+
+  local agent_fpr
+  agent_fpr=$(fingerprint_of "$AGENT_EMAIL")
+  [[ -n "$agent_fpr" ]] || {
+    log_error "could not read the agent key fingerprint"
+    exit 1
+  }
+
+  # 2. agent/ subtree. The agent key goes first: gpg walks recipients in
+  # order, so a headless decrypt must hit the passphrase-less key before it
+  # would ever reach the main one. The main key is listed too, so you can
+  # still read and edit these entries interactively.
+  local subdir_gpg_id="$store/$AGENT_SUBDIR/.gpg-id"
+  if [[ -f "$subdir_gpg_id" ]] && grep -qxF "$agent_fpr" "$subdir_gpg_id"; then
+    log_info "$AGENT_SUBDIR/ already initialized"
+  else
+    log_info "initializing $AGENT_SUBDIR/ for $agent_fpr (+ main key)"
+    pass init -p "$AGENT_SUBDIR" "$agent_fpr" "${main_ids[@]}" >/dev/null
+    log_success "$AGENT_SUBDIR/ initialized"
+  fi
+
+  # 3. Optional: widen the passphrase cache so the popup shows up rarely.
+  if [[ -n "$cache_ttl" ]]; then
+    [[ "$cache_ttl" =~ ^[0-9]+$ ]] || {
+      log_error "--cache-ttl must be a whole number of seconds"
+      exit 2
+    }
+    local gnupg_home="${GNUPGHOME:-$HOME/.gnupg}"
+    local conf="$gnupg_home/gpg-agent.conf"
+    mkdir -p "$gnupg_home"
+    chmod 700 "$gnupg_home"
+    touch "$conf"
+    cp "$conf" "$conf.bak"
+    grep -vE '^\s*(default-cache-ttl|max-cache-ttl)\b' "$conf.bak" >"$conf" || true
+    printf 'default-cache-ttl %s\nmax-cache-ttl %s\n' "$cache_ttl" "$cache_ttl" >>"$conf"
+    gpgconf --reload gpg-agent >/dev/null 2>&1 || true
+    log_success "cache ttl set to ${cache_ttl}s (backup at $conf.bak)"
+  fi
+
+  echo
+  log_success "done"
+  log_info "put agent-consumed secrets under $AGENT_SUBDIR/ — e.g. 'pass insert $AGENT_SUBDIR/some-token'"
+  log_info "everything else still needs 'pass-unlock <entry>' once per cache window"
+  log_warning "nothing was moved into $AGENT_SUBDIR/ — migrating an entry there deliberately lowers its protection"
+}
+
+cmd_status() {
+  fmt_title_underline "pass headless status"
+
+  local store
+  store=$(store_dir)
+  if [[ ! -d "$store" ]]; then
+    log_error "no store at $store"
+    exit 1
+  fi
+
+  echo
+  fmt_key "gpg-id map"
+  echo
+  while IFS= read -r f; do
+    printf '  %-28s %s\n' "$(dirname "${f#"$store"/}")/" "$(tr '\n' ' ' <"$f")"
+  done < <(find "$store" -name '.gpg-id' | sort)
+
+  echo
+  fmt_key "agent key ($AGENT_EMAIL)"
+  echo
+  if have_secret_key "$AGENT_EMAIL"; then
+    local grip protection
+    while IFS= read -r grip; do
+      [[ -n "$grip" ]] || continue
+      protection=$(keyinfo_field "$grip" 8)
+      case "$protection" in
+      C) printf '  %s  unprotected (expected)\n' "${grip:0:16}…" ;;
+      P) printf '  %s  PASSPHRASE-PROTECTED — headless decrypt will prompt\n' "${grip:0:16}…" ;;
+      *) printf '  %s  protection: %s\n' "${grip:0:16}…" "${protection:-unknown}" ;;
+      esac
+    done < <(keygrips_of "$AGENT_EMAIL")
+  else
+    printf '  absent — run '\''%s setup'\''\n' "$command_name"
+  fi
+
+  echo
+  fmt_key "main key cache"
+  echo
+  local main_id
+  main_id=$(head -1 "$store/.gpg-id" 2>/dev/null || true)
+  if [[ -n "$main_id" ]]; then
+    local grip cached
+    while IFS= read -r grip; do
+      [[ -n "$grip" ]] || continue
+      cached=$(keyinfo_field "$grip" 7)
+      if [[ "$cached" == "1" ]]; then
+        printf '  %s  cached — headless decrypt works now\n' "${grip:0:16}…"
+      else
+        printf '  %s  not cached — needs '\''pass-unlock <entry>'\''\n' "${grip:0:16}…"
+      fi
+    done < <(keygrips_of "$main_id")
+  fi
+
+  echo
+  fmt_key "cache ttl"
+  echo
+  local conf="$HOME/.gnupg/gpg-agent.conf"
+  if grep -qE '^\s*(default|max)-cache-ttl' "$conf" 2>/dev/null; then
+    grep -E '^\s*(default|max)-cache-ttl' "$conf" | sed 's/^/  /'
+  else
+    printf '  unset — gpg defaults: default-cache-ttl 600, max-cache-ttl 7200\n'
+  fi
+
+  echo
+  fmt_key "tmux prompt target"
+  echo
+  local clients
+  clients=$(tmux list-clients -F '#{client_name}' 2>/dev/null | grep -c . || true)
+  if ((clients > 0)); then
+    printf '  %s attached client(s) — pass-unlock can prompt\n' "$clients"
+  else
+    printf '  no attached client — pass-unlock cannot prompt\n'
+  fi
+}
+
+main() {
+  if [ $# -lt 1 ]; then
+    usage
+    exit 0
+  fi
+
+  case "$1" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  setup)
+    shift
+    cmd_setup "$@"
+    ;;
+  status)
+    shift
+    cmd_status "$@"
+    ;;
+  *)
+    log_error "Unknown $command_name command: $1"
+    echo -e
+    usage
+    exit 1
+    ;;
+  esac
+}
+
+main "$@"

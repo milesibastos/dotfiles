@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# Prime the gpg-agent passphrase cache so a session with no terminal of its
+# own can decrypt `pass` entries.
+#
+# gpg hands the caller's tty to pinentry. A headless caller has none, so gpg
+# sends `OPTION ttyname=not a tty`, pinentry has nowhere to draw, and the
+# prompt is cancelled before anyone sees it. A tmux popup does get a real pty,
+# so the prompt is asked there instead; the passphrase lands in gpg-agent's
+# cache and the caller's own `pass show` then succeeds with no tty involved.
+#
+# No secret crosses back: the popup discards its own decryption and only an
+# exit status is returned.
+
+set -Eeuo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
+command_name=$(basename "${BASH_SOURCE[0]}")
+
+timeout_secs="${PASS_UNLOCK_TIMEOUT:-90}"
+
+usage() {
+  cat <<EOF
+Usage: $command_name [options] [ENTRY]
+
+Unlock the gpg-agent cache for ENTRY, prompting in a tmux popup on the
+attached client. Exits 0 if the entry is already decryptable.
+
+With no ENTRY, picks an entry governed by the store's root .gpg-id. Entries
+under a subtree with its own .gpg-id (e.g. agent/) are skipped: those are
+encrypted to a different key, so decrypting one primes nothing.
+
+Options:
+    -t, --timeout SECONDS   Give up after this long (default: $timeout_secs)
+    -n, --dry-run           Write the popup script, check it, print its path
+                            and exit — no prompt, no decryption
+    -h, --help              Show this help message
+
+Environment:
+    PASS_UNLOCK_TIMEOUT     Default for --timeout
+    PASSWORD_STORE_DIR      Store location (default: ~/.password-store)
+EOF
+}
+
+die() {
+  printf '%s: %s\n' "$command_name" "$1" >&2
+  exit "${2:-1}"
+}
+
+store_dir() { printf '%s\n' "${PASSWORD_STORE_DIR:-$HOME/.password-store}"; }
+
+# First entry whose nearest .gpg-id is the store root. Anything inside a
+# subtree with its own .gpg-id is encrypted to a different key and would not
+# prime the cache we care about.
+default_entry() {
+  local store="$1" file dir rel
+  while IFS= read -r file; do
+    dir=$(dirname "$file")
+    while [[ "$dir" != "$store" && "$dir" != "/" ]]; do
+      if [[ -f "$dir/.gpg-id" ]]; then
+        dir=""
+        break
+      fi
+      dir=$(dirname "$dir")
+    done
+    [[ -z "$dir" ]] && continue
+    rel="${file#"$store"/}"
+    printf '%s\n' "${rel%.gpg}"
+    return 0
+  done < <(find "$store" -type f -name '*.gpg' 2>/dev/null | sort)
+  return 1
+}
+
+main() {
+  local entry="" dry_run=false
+  while (($#)); do
+    case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -n | --dry-run)
+      dry_run=true
+      shift
+      ;;
+    -t | --timeout)
+      (($# >= 2)) || die "--timeout needs a value" 2
+      timeout_secs="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*) die "unknown option: $1" 2 ;;
+    *) break ;;
+    esac
+  done
+  [[ $# -gt 0 ]] && entry="$1"
+
+  [[ "$timeout_secs" =~ ^[0-9]+$ ]] || die "--timeout must be a whole number of seconds" 2
+
+  local pass_bin
+  pass_bin=$(command -v pass) || die "pass not found on PATH"
+
+  local store
+  store=$(store_dir)
+  [[ -d "$store" ]] || die "no password store at $store"
+
+  if [[ -z "$entry" ]]; then
+    entry=$(default_entry "$store") ||
+      die "no entry is governed by the root .gpg-id — name one explicitly"
+  fi
+  entry="${entry%.gpg}"
+  [[ -f "$store/$entry.gpg" ]] || die "no such entry: $entry"
+
+  if ! $dry_run; then
+    # Fast path. With a cold cache this fails immediately (pinentry cancels for
+    # lack of a tty), so it costs nothing when we are about to open the popup.
+    if "$pass_bin" show "$entry" >/dev/null 2>&1; then
+      exit 0
+    fi
+
+    tmux display-message -p '#{socket_path}' >/dev/null 2>&1 ||
+      die "no tmux server reachable — run 'pass show $entry' in an interactive shell instead"
+    local clients
+    clients=$(tmux list-clients -F '#{client_name}' 2>/dev/null | grep -c . || true)
+    ((clients > 0)) ||
+      die "tmux has no attached client to prompt on — attach one, or run 'pass show $entry' in an interactive shell"
+  fi
+
+  local work status_file popup_script
+  work=$(mktemp -d "${TMPDIR:-/tmp}/pass-unlock.XXXXXX")
+  trap 'rm -rf "$work"' EXIT
+  status_file="$work/status"
+  popup_script="$work/popup.sh"
+
+  # tmux runs popup commands through `default-shell`, which here is fish — so
+  # ship a script with its own shebang rather than a shell string, and let the
+  # popup inherit nothing but the path it is handed.
+  cat >"$popup_script" <<EOF
+#!/usr/bin/env bash
+set -uo pipefail
+export PATH=$(printf '%q' "$PATH")
+export PASSWORD_STORE_DIR=$(printf '%q' "$store")
+GPG_TTY=\$(tty) || GPG_TTY=
+export GPG_TTY
+
+printf '\n  Unlocking pass for a headless session\n  entry: %s\n\n' $(printf '%q' "$entry")
+
+timeout $(printf '%q' "$timeout_secs") $(printf '%q' "$pass_bin") show $(printf '%q' "$entry") >/dev/null 2>&1
+rc=\$?
+printf '%s' "\$rc" >$(printf '%q' "$status_file")
+
+if [[ \$rc -ne 0 ]]; then
+  printf '\n  unlock failed (exit %s) — press any key to close\n' "\$rc"
+  read -r -n 1 -s || true
+fi
+EOF
+  chmod +x "$popup_script"
+
+  if $dry_run; then
+    bash -n "$popup_script" || die "generated popup script is not valid bash"
+    trap - EXIT # keep the work dir so the script can be inspected
+    printf '%s\n' "$popup_script"
+    exit 0
+  fi
+
+  "$script_dir/tmux-popup" --compact -- "$popup_script" >/dev/null 2>&1 ||
+    die "could not open the tmux popup"
+
+  # display-popup blocks until the popup closes on tmux 3.7, so by here the
+  # attempt is over. Poll anyway in case a build returns early, and treat the
+  # real decryption — not the recorded status — as the source of truth.
+  local deadline=$((SECONDS + timeout_secs))
+  while :; do
+    "$pass_bin" show "$entry" >/dev/null 2>&1 && exit 0
+    [[ -f "$status_file" ]] && break
+    ((SECONDS >= deadline)) && break
+    sleep 1
+  done
+
+  die "could not unlock $entry"
+}
+
+main "$@"

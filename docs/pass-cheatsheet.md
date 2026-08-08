@@ -135,6 +135,67 @@ Browser fill: [`passff`](https://github.com/passff/passff) (Firefox) or
 [`browserpass`](https://github.com/browserpass/browserpass-extension)
 (Chrome/Firefox/Safari) bridge to the store.
 
+## Headless / non-interactive use
+
+Agents and detached scripts have no tty. gpg passes the caller's terminal to
+pinentry, so with none it sends `OPTION ttyname=not a tty`, pinentry has
+nowhere to draw, and the prompt is cancelled before you see it — `pass show`
+just fails with exit 2. Two mechanisms cover this, set up by `dot pass setup`:
+
+```bash
+dot pass setup                 # create the agent key, init agent/
+dot pass setup --cache-ttl 28800   # ...and widen the passphrase cache to 8h
+dot pass status                # gpg-id map, cache state, tmux availability
+```
+
+### `agent/` — a passphrase-less subtree
+
+`pass` honours a `.gpg-id` per subfolder. `dot pass setup` generates a second
+GPG key with **no passphrase** and points `agent/` at it, listing the agent key
+first and your main key second:
+
+```
+~/.password-store/.gpg-id          you@example.com
+~/.password-store/agent/.gpg-id    <agent-key-fingerprint>
+                                   you@example.com
+```
+
+gpg walks recipients in order, so a headless decrypt hits the passphrase-less
+key and never reaches the main one. Your main key is still a recipient, so you
+can read and edit those entries interactively and they are not orphaned if the
+agent key is lost.
+
+```bash
+pass insert agent/some-token   # decrypts later with zero interaction
+```
+
+The agent key's secret sits unprotected in `~/.gnupg`. Entries under `agent/`
+are only as safe as that directory — put low-blast-radius secrets there and
+leave production credentials under the main key. `dot pass setup` never moves
+anything for you.
+
+### `pass-unlock` — tmux popup for the main key
+
+For everything outside `agent/`, `pass-unlock` opens a tmux popup on the
+attached client. A popup gets a real pty, so pinentry can prompt there; the
+passphrase lands in gpg-agent's cache and the headless caller's own `pass show`
+then works with no tty of its own.
+
+```bash
+pass-unlock work/api-token     # prompt in a popup, prime the cache
+secret-get work/api-token | some-tool --token-stdin
+```
+
+This needs a terminal pinentry — set `pinentry-program` to `pinentry-tty` or
+`pinentry-curses` in `~/.gnupg/gpg-agent.conf`. `pinentry-mac` cannot draw in a
+popup without a GUI session, which is exactly the case this section is about.
+
+`secret-get` is `pass-unlock` + `pass show` in one, a drop-in for `pass show`.
+Both need an attached tmux client and fail with a clear message without one.
+`pass-unlock` blocks while the popup is open (default 90s, `--timeout` to
+change), and no secret ever crosses back — the popup discards its own
+decryption and returns only an exit status.
+
 ## Gotchas
 
 - First decrypt per session prompts for the passphrase; gpg-agent caches
