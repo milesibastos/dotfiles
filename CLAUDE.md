@@ -31,3 +31,11 @@ Full fresh-machine sequence: `docs/setup.md`.
 - fish and zsh env/aliases are synced by hand — change both when touching env vars or aliases
 - Git identity is NOT in `config/git/config`; it lives in `~/.gitconfig-local` (written by `dot git setup`)
 - Scripts derive `$DOTFILES` from their own location — never hardcode the repo path
+- `bin/claude-statusline`, `bin/nerdwin` and `bin/tmux-git-status` embed nerd-font glyphs **literally** (macOS system bash 3.2 does not expand `\u`/`\U` in `printf`). Never retype a glyph — copy the line or restore it from `git show HEAD:<file>`. After any rewrite of these files, verify the codepoints survived; `perl -pi` without `-CSD` double-encodes UTF-8 already in the file:
+
+  ```bash
+  python3 -c 'import io,sys
+  for l in io.open(sys.argv[1],encoding="utf-8"):
+      g=[hex(ord(c)) for c in l if ord(c)>0x2500]
+      if g: print(g, repr(l))' bin/claude-statusline
+  ```
