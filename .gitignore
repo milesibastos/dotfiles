@@ -23,6 +23,8 @@ home/.claude/*
 !home/.claude/skills/
 home/.claude/skills/*
 !home/.claude/skills/graphify/
+# version marker the graphify installer rewrites on every update
+home/.claude/skills/graphify/.graphify_version
 !home/.claude/themes/
 # never track runtime backups — they contain live credentials
 home/.claude/backups/
@@ -32,4 +34,6 @@ home/.pi/agent/auth.json
 home/.pi/agent/sessions/
 home/.pi/agent/git/
 home/.pi/agent/run-history.jsonl
+# vendored third-party skills, installed by the tool rather than curated here
+home/.pi/agent/skills/
 *.zip
