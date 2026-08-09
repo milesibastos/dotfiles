@@ -172,7 +172,9 @@ command -q starship; and starship init fish | source
 # ── Local overrides ─────────────────────────────────────────────
 test -f $HOME/.config/fish/config.local.fish; and source $HOME/.config/fish/config.local.fish
 
-# Keep user/dotfile shims ahead of system tools after mise/local config mutate PATH.
-# mise is already activated above (guarded); only the PATH reorder is needed here.
-# Order matches .zshenv/.zprofile: $DOTFILES/bin first, then $HOME/bin.
+# Keep Homebrew and user/dotfile tools ahead of system tools after login-shell
+# path_helper, mise, and local config mutate PATH.
+if set -q HOMEBREW_PREFIX
+    fish_add_path -pmP $HOMEBREW_PREFIX/bin $HOMEBREW_PREFIX/sbin
+end
 fish_add_path -pmP $DOTFILES/bin $HOME/bin

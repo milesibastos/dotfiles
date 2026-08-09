@@ -49,14 +49,26 @@ setup_git() {
   git config -f "$local_config" user.email "${email:-$defaultEmail}"
   git config -f "$local_config" github.user "${github:-$defaultGithub}"
 
+  # Reset system helpers before selecting one for this OS. In particular,
+  # Homebrew's ad-hoc osxkeychain helper cannot access items created by the
+  # Apple-signed helper without prompting again after upgrades.
+  git config -f "$local_config" --unset-all credential.helper || true
+  git config -f "$local_config" --add credential.helper ""
+
   if [[ "$(uname)" == "Darwin" ]]; then
-    git config -f "$local_config" credential.helper "osxkeychain"
+    apple_git_exec_path=$(env -u GIT_EXEC_PATH /usr/bin/git --exec-path)
+    apple_credential_helper="$apple_git_exec_path/git-credential-osxkeychain"
+    if [[ ! -x "$apple_credential_helper" ]]; then
+      log_error "Apple git-credential-osxkeychain is not available."
+      exit 1
+    fi
+    git config -f "$local_config" --add credential.helper "$apple_credential_helper"
   else
     read -rn 1 -p "Save user and password to an unencrypted file to avoid writing? [y/N] " save
     if [[ $save =~ ^([Yy])$ ]]; then
-      git config -f "$local_config" credential.helper "store"
+      git config -f "$local_config" --add credential.helper "store"
     else
-      git config -f "$local_config" credential.helper "cache --timeout 3600"
+      git config -f "$local_config" --add credential.helper "cache --timeout 3600"
     fi
   fi
 }
