@@ -90,6 +90,16 @@ return {
       })
     end,
     config = function(_, opts)
+      -- Must precede setup(): setup() kicks off the ensure_installed downloads,
+      -- and each one picks curl-tarball vs git at queue time. The `init` hook
+      -- above sets this too late — its own `require` of the install module
+      -- triggers lazy's load-on-require, so config/setup run *inside* that
+      -- require, before the assignment on the next line lands. Parsers hosted
+      -- outside GitHub (jsonc → gitlab.com) then 404 on a guessed `master` ref
+      -- and hit Cloudflare's bot challenge, yielding "Unrecognized archive format".
+      if config.prefer_git then
+        require("nvim-treesitter.install").prefer_git = true
+      end
       require("nvim-treesitter.configs").setup(opts)
       vim.treesitter.language.register("markdown", { "md", "mdx" })
     end,
