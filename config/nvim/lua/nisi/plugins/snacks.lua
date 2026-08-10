@@ -18,6 +18,9 @@ return {
           return not (notif.msg:match("Fetching latest versions"))
         end,
       },
+      -- Only here for `ui_select`: it owns `vim.ui.select`, which dressing.nvim
+      -- used to provide. Telescope stays the picker for explicit searches.
+      picker = { enabled = true },
       quickfile = { enabled = true },
       scroll = { enabled = false },
       statuscolumn = {

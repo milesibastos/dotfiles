@@ -51,8 +51,6 @@ return {
     },
   },
   { "alvarosevilla95/luatab.nvim", config = true },
-  -- improve the default neovim interfaces, such as refactoring
-  { "stevearc/dressing.nvim", event = "VeryLazy" },
   { "MunifTanjim/nui.nvim", lazy = true },
   {
     "folke/noice.nvim",
