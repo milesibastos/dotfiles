@@ -16,8 +16,17 @@ export VIM_TMP="$HOME/.vim-tmp"
 # add a config file for ripgrep
 export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
 
+# Claude Code puts its cross-session messaging sockets in $CLAUDE_CODE_TMPDIR/cc-socks
+# (falling back to /tmp — it ignores TMPDIR). That path is not namespaced per uid, so on a
+# box with several local accounts the first user to start Claude owns /tmp/cc-socks 0700 and
+# every other user's session fails to bind ("refusing to bind: EPERM chmod '/tmp/cc-socks'"),
+# silently killing agent-to-agent messaging. Keep it under $HOME.
+# Parity with config/fish/config.fish.
+export CLAUDE_CODE_TMPDIR="$HOME/.claude/tmp"
+
 [[ -d "$CACHEDIR" ]] || mkdir -p "$CACHEDIR"
 [[ -d "$VIM_TMP" ]] || mkdir -p "$VIM_TMP"
+[[ -d "$CLAUDE_CODE_TMPDIR" ]] || mkdir -p "$CLAUDE_CODE_TMPDIR"
 
 [[ -f ~/.zshenv.local ]] && source ~/.zshenv.local
 

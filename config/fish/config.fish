@@ -23,8 +23,16 @@ set -gx RIPGREP_CONFIG_PATH "$HOME/.config/ripgrep/config"
 set -gx EDITOR nvim
 set -gx GIT_EDITOR nvim
 
+# Claude Code puts its cross-session messaging sockets in $CLAUDE_CODE_TMPDIR/cc-socks
+# (falling back to /tmp — it ignores TMPDIR). That path is not namespaced per uid, so on a
+# box with several local accounts the first user to start Claude owns /tmp/cc-socks 0700 and
+# every other user's session fails to bind ("refusing to bind: EPERM chmod '/tmp/cc-socks'"),
+# silently killing agent-to-agent messaging. Keep it under $HOME.
+set -gx CLAUDE_CODE_TMPDIR "$HOME/.claude/tmp"
+
 test -d $CACHEDIR; or mkdir -p $CACHEDIR
 test -d $VIM_TMP; or mkdir -p $VIM_TMP
+test -d $CLAUDE_CODE_TMPDIR; or mkdir -p $CLAUDE_CODE_TMPDIR
 
 if test -d ~/code
     set -gx CODE_DIR ~/code
