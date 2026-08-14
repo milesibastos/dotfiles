@@ -28,6 +28,8 @@ ICON_SESSION="${DIM}${RESET}"     # \uf292
 # Feature flags
 SHOW_CONTEXT_TOKENS="${CLAUDE_STATUSLINE_TOKENS:-1}"  # 0 hides the (used/total) suffix
 SHOW_SESSION_FULL="${CLAUDE_STATUSLINE_SESSION_FULL:-0}"  # 1 shows the full session UUID
+PATH_MAX="${CLAUDE_STATUSLINE_PATH_MAX:-}"  # fixed path budget; empty = derive from terminal width
+PATH_TAIL="${CLAUDE_STATUSLINE_PATH_TAIL:-3}"  # trailing dirs that always keep their full name
 
 # Read JSON input from stdin
 input=$(cat)
@@ -96,6 +98,87 @@ format_tokens() {
   fi
 }
 
+# Replace a leading $HOME with ~. Done with prefix stripping rather than
+# ${var/#$HOME/~} because bash tilde-expands the replacement, turning that
+# substitution into a silent no-op. The trailing slash in the second pattern
+# keeps /Users/etereo2 from matching /Users/etereo.
+contract_home() {
+  [ -n "$HOME" ] || {
+    printf '%s' "$1"
+    return
+  }
+  case "$1" in
+  "$HOME") printf '~' ;;
+  "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;;
+  *) printf '%s' "$1" ;;
+  esac
+}
+
+# Shrink a path to fit $2 columns by collapsing leading directories to their
+# initial, left to right, until it fits. The last $3 components always keep
+# their full name, so an over-budget path degrades instead of losing the part
+# that identifies it:
+#   ~/workspaces/billin/workspace/stories/BO-14194-ficha-contactos-v2/code/gofre
+#   → ~/w/b/w/s/BO-14194-ficha-contactos-v2/code/gofre
+shorten_path() {
+  local path="$1" budget="$2" keep="$3"
+
+  [ "${#path}" -le "$budget" ] && {
+    printf '%s' "$path"
+    return
+  }
+
+  # Hold the root slash aside; a leading delimiter would otherwise split into
+  # an empty first field and yield a doubled slash.
+  local lead=""
+  case "$path" in
+  /*)
+    lead="/"
+    path="${path#/}"
+    ;;
+  esac
+
+  # Split on / with globbing off, so a component like * stays literal.
+  local oldifs="$IFS" parts
+  set -f
+  IFS='/'
+  # shellcheck disable=SC2206  # splitting is the point; globbing is off, and
+  # mapfile/readarray don't exist in the bash 3.2 that ships with macOS
+  parts=($path)
+  set +f
+  IFS="$oldifs"
+
+  local n="${#parts[@]}"
+  [ "$n" -le 1 ] && {
+    printf '%s' "$path"
+    return
+  }
+
+  # Never abbreviate past this index — the protected tail
+  local floor=$((n - keep))
+  [ "$floor" -lt 1 ] && floor=1
+
+  local i j c result=""
+  for ((i = 0; i <= floor; i++)); do
+    result="$lead"
+    for ((j = 0; j < n; j++)); do
+      [ "$j" -gt 0 ] && result="$result/"
+      if [ "$j" -lt "$i" ]; then
+        c="${parts[j]}"
+        case "$c" in
+        .?*) result="$result${c:0:2}" ;; # keep dotdirs distinguishable: .config → .c
+        *) result="$result${c:0:1}" ;;
+        esac
+      else
+        result="$result${parts[j]}"
+      fi
+    done
+    [ "${#result}" -le "$budget" ] && break
+  done
+
+  printf '%s' "$result"
+}
+
 # Context remaining, e.g. "87% (123K/1M)" — color-coded on the percentage
 build_context_display() {
   # Pre-calculated by Claude Code; null until the first API response
@@ -139,9 +222,6 @@ lines_display=$(get_lines_changed)
 agent_name=$(get_agent_name)
 session_id=$(get_session_id)
 
-# Contract $HOME to ~ for a shorter path
-display_dir="${current_dir/#$HOME/~}"
-
 # Get git branch
 git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "no-git")
 
@@ -151,6 +231,15 @@ if [ -n "$TMUX" ]; then
 else
   term_width="${COLUMNS:-$(tput cols 2>/dev/null || echo 200)}"
 fi
+
+# Contract $HOME to ~, then fit the path into roughly a third of the line
+path_budget="$PATH_MAX"
+if [ -z "$path_budget" ]; then
+  path_budget=$((term_width / 3))
+  [ "$path_budget" -lt 24 ] && path_budget=24
+  [ "$path_budget" -gt 60 ] && path_budget=60
+fi
+display_dir=$(shorten_path "$(contract_home "$current_dir")" "$path_budget" "$PATH_TAIL")
 
 # Build segments — order: identity → impact → resources → meta
 seg_add() {
