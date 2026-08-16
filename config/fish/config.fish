@@ -28,11 +28,19 @@ set -gx GIT_EDITOR nvim
 # box with several local accounts the first user to start Claude owns /tmp/cc-socks 0700 and
 # every other user's session fails to bind ("refusing to bind: EPERM chmod '/tmp/cc-socks'"),
 # silently killing agent-to-agent messaging. Keep it under $HOME.
-set -gx CLAUDE_CODE_TMPDIR "$HOME/.claude/tmp"
+#
+# It must also be a real dir OUTSIDE the dotfiles repo: Claude Code walks every component of
+# the resolved path and refuses to bind if any of them is group- or world-writable without the
+# sticky bit. ~/.claude symlinks into ~/code/dotfiles/home/.claude, and code/ dotfiles/ home/
+# .claude/ are all 0775 group staff, so $HOME/.claude/tmp fails that check even though the
+# leaf is 0700 ("a sockets-directory component is not a private-or-sticky directory owned by
+# us or root"). $HOME/.cc-tmp resolves under $HOME (0750) only.
+set -gx CLAUDE_CODE_TMPDIR "$HOME/.cc-tmp"
 
 test -d $CACHEDIR; or mkdir -p $CACHEDIR
 test -d $VIM_TMP; or mkdir -p $VIM_TMP
 test -d $CLAUDE_CODE_TMPDIR; or mkdir -p $CLAUDE_CODE_TMPDIR
+chmod 700 $CLAUDE_CODE_TMPDIR
 
 if test -d ~/code
     set -gx CODE_DIR ~/code
