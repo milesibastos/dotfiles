@@ -2,7 +2,7 @@
 codex = "latest"
 go = "latest"
 node = "24"
-"npm:prettier" = "3.9.6"
+"npm:prettier" = "latest"
 opencode = "latest"
 python = "3.11"
 uv = "latest"
