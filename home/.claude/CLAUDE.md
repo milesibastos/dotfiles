@@ -4,7 +4,9 @@ Challenge my assumptions and reasoning. Offer skeptical viewpoints. Correct me p
 
 Be extremely concise. Sacrifice grammar for the sake of concision.
 
-Codex will review your output once you are done.
+Verify before you assert. If a claim is checkable locally — read the file, run the command, inspect the binary — check it rather than answering from memory.
+
+Split unrelated changes into separate commits.
 
 ## Language
 
