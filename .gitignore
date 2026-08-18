@@ -22,9 +22,6 @@ home/.claude/*
 !home/.claude/CLAUDE.md
 !home/.claude/skills/
 home/.claude/skills/*
-!home/.claude/skills/graphify/
-# version marker the graphify installer rewrites on every update
-home/.claude/skills/graphify/.graphify_version
 !home/.claude/themes/
 # never track runtime backups — they contain live credentials
 home/.claude/backups/
