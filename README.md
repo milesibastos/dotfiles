@@ -72,7 +72,7 @@ Everything runs inside tmux. The status bar shows git state (`bin/tmux-git-statu
 
 ## Claude Code
 
-`home/.claude/` is symlinked to `~/.claude`. Only curated files are tracked (`settings.json`, `CLAUDE.md`, `skills/graphify/`, themes); runtime state is gitignored. Hooks are defined inline in `settings.json` and call scripts in `bin/`.
+`home/.claude/` is symlinked to `~/.claude`. Only curated files are tracked (`settings.json`, `CLAUDE.md`, themes); runtime state is gitignored. Hooks are defined inline in `settings.json` and call scripts in `bin/`.
 
 ## Neovim
 
