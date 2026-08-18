@@ -201,6 +201,9 @@
       }
     ]
   },
+  "worktree": {
+    "baseRef": "fresh"
+  },
   "statusLine": {
     "type": "command",
     "command": "claude-statusline"
@@ -402,10 +405,11 @@
   "advisorModel": "fable",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
-  "teammateMode": "tmux",
+  "autoContinueAtUsageLimit": false,
+  "teammateMode": "in-process",
+  "crossSessionInbound": "accept",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
-  "defaultMode": "auto",
-  "crossSessionInbound": "accept"
+  "defaultMode": "auto"
 }
