@@ -209,29 +209,11 @@
     "command": "claude-statusline"
   },
   "enabledPlugins": {
-    "claude-md-management@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
     "codex@openai-codex": true,
-    "hookify@claude-plugins-official": true,
-    "obsidian@obsidian-skills": true,
-    "plugin-dev@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "ruby-lsp@claude-plugins-official": true,
-    "atlassian@claude-plugins-official": true,
-    "notion@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
-    "slack@claude-plugins-official": true,
-    "figma@claude-plugins-official": true
+    "context7@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "obsidian-skills": {
-      "source": {
-        "source": "github",
-        "repo": "kepano/obsidian-skills"
-      }
-    },
     "openai-codex": {
       "source": {
         "source": "github",
