@@ -18,8 +18,3 @@ Two carve-outs, both because a human audience other than me reads them:
 - **Customer-facing product content** — help-center articles, marketing site copy, UI strings, and anything else shipped to end users stay in the product's language (pt-BR).
 
 When you touch an existing Portuguese doc or memory that the rule now covers, translate it to English as part of the edit rather than appending English to Portuguese.
-
-# graphify
-
-- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-  When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
