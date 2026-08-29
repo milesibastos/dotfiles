@@ -9,3 +9,6 @@ uv = "latest"
 
 [settings]
 idiomatic_version_file_enable_tools = ["node"]
+# gh stores its token in the macOS keyring, so hosts.yml is empty and mise's
+# gh_cli_tokens lookup finds nothing -> unauthenticated GitHub API -> 403 at 60 req/h.
+github.credential_command = "gh auth token"
