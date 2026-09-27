@@ -111,7 +111,6 @@ command -q zoxide; and zoxide init fish --hook pwd | source
 command -q fzf; and fzf --fish | source
 command -q pyenv; and pyenv init - fish | source
 command -q rbenv; and rbenv init - --no-rehash fish | source
-command -q mise; and mise activate fish | source
 
 if command -q fzf
     set -gx FZF_DEFAULT_COMMAND 'fd --type f'
@@ -194,3 +193,8 @@ if set -q HOMEBREW_PREFIX
     fish_add_path -pmP $HOMEBREW_PREFIX/bin $HOMEBREW_PREFIX/sbin
 end
 fish_add_path -pmP $DOTFILES/bin $HOME/bin
+
+# mise last and aggressive, so per-project pins (.mise.toml) win over Homebrew's
+# node/pnpm — the Homebrew re-prepend above would otherwise shadow them.
+set -gx MISE_ACTIVATE_AGGRESSIVE 1
+command -q mise; and mise activate fish | source
