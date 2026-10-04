@@ -12,9 +12,9 @@ source "$ZDOTDIR/.zsh_functions"
 # initialize autocomplete (rebuild dump once per day)
 autoload -U compinit add-zsh-hook
 if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
-  compinit
+  compinit -u
 else
-  compinit -C
+  compinit -C -u
 fi
 
 autoload -Uz edit-command-line
