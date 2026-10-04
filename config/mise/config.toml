@@ -306,11 +306,9 @@ run = """
   export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
   brew trust 'FelixKratz/formulae'
-  brew trust 'nikitabobko/tap'
   brew tap 'FelixKratz/formulae'
-  brew tap 'nikitabobko/tap'
 
-  brew install borders sketchybar
+  brew install sketchybar
 """
 
 # `mise bootstrap` runs this after [tools] are installed.

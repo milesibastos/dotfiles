@@ -17,7 +17,7 @@ These are my actual dotfiles, not a starter kit. The host setup assumes Apple Si
 | Shell and prompt | Homebrew zsh and Starship |
 | Multiplexer | tmux |
 | Editor | Neovim with lazy.nvim |
-| Window management | AeroSpace, SketchyBar, Borders, and Karabiner-Elements |
+| Window management | OmniWM, SketchyBar, and Karabiner-Elements |
 | CLI agents | Pi and Claude Code |
 | Agent orchestration | Fleet |
 | Fonts and color | Monaspace, Symbols Nerd Font, Tokyo Night |
@@ -119,7 +119,7 @@ mise tasks
 
 - newer Bash, Git, zsh, grep, and Vim builds
 - btop, cloc, entr, fswatch, GnuPG, highlight, tree, wdiff, and wget through Homebrew or apt
-- noti, trash, AeroSpace, Ghostty, WezTerm, Karabiner-Elements, SketchyBar, Borders, Monaspace, and Symbols Nerd Font on macOS
+- noti, trash, Ghostty, WezTerm, Karabiner-Elements, SketchyBar, Monaspace, and Symbols Nerd Font on macOS
 
 ### Additional repositories
 
@@ -196,17 +196,7 @@ Ghostty is the terminal this tmux config targets. Its config uses Tokyo Night li
 
 The bootstrap installs WezTerm too, and a Kitty config remains in the tree.
 
-AeroSpace starts at login and launches SketchyBar. The basic movement scheme is:
-
-| Keys | Action |
-| --- | --- |
-| `alt+h/j/k/l` | Focus a window |
-| `alt+shift+h/j/k/l` | Move a window |
-| `alt+1..9` or `alt+letter` | Switch workspace |
-| `alt+shift+1..9` or `alt+shift+letter` | Move a window to a workspace |
-| `alt+shift+;` | Enter the AeroSpace service mode |
-
-The AeroSpace rules route terminals, browsers, chat apps, mail, and other applications to named workspaces. SketchyBar shows those workspaces with app icons, the focused window title, the current layout, Fleet state, GitHub review requests, agent spend, Claude usage, and now-playing information. Borders runs as a Homebrew service.
+OmniWM tiles windows and routes apps to named workspaces. The bootstrap doesn't install it. Its keys and workspace layout are in [`config/omniwm/README.md`](config/omniwm/README.md). The old AeroSpace and Borders configs remain in the tree. SketchyBar shows the workspaces with app icons, the focused window title, the current layout, Fleet state, GitHub review requests, agent spend, Claude usage, and now-playing information.
 
 ## Themes
 
