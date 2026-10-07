@@ -145,9 +145,9 @@ state = "running"
 enabled = true
 
 [bootstrap.repos]
-"~/Developer/pi-extensions" = { url = "git@github.com:nicknisi/pi-extensions.git" }
-"~/Developer/ideation" = { url = "git@github.com:nicknisi/ideation.git" }
-"~/Developer/claude-plugins" = { url = "git@github.com:nicknisi/claude-plugins.git" }
+"~/Developer/pi-extensions" = { url = "https://github.com/nicknisi/pi-extensions.git" }
+"~/Developer/ideation" = { url = "https://github.com/nicknisi/ideation.git" }
+"~/Developer/claude-plugins" = { url = "https://github.com/nicknisi/claude-plugins.git" }
 "~/Developer/fleet" = { url = "https://github.com/nicknisi/fleet.git" }
 "~/Developer/skills" = { url = "https://github.com/nicknisi/skills.git" }
 
