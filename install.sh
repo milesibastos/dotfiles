@@ -119,8 +119,18 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 # Until bootstrap creates ~/.config/mise, point mise at the cloned config.
 # Its pre-packages hook installs Homebrew before the brew package manager runs.
 step "Bootstrapping the machine"
+# On a shared Mac, Homebrew can belong to another account; mise's brew manager
+# would then try to sudo-create the prefix, so leave system packages to the owner.
+bootstrap_args=(--yes --skip-dirty)
+if command -v brew &>/dev/null; then
+  brew_prefix="$(brew --prefix)"
+  if [[ ! -w "$brew_prefix" || ! -w "$brew_prefix/Cellar" ]]; then
+    note "$brew_prefix belongs to $(stat -f '%Su' "$brew_prefix"); skipping Homebrew packages"
+    bootstrap_args+=(--skip packages)
+  fi
+fi
 run env "MISE_GLOBAL_CONFIG_FILE=$DOTFILES/config/mise/config.toml" \
-  mise bootstrap --yes --skip-dirty
+  mise bootstrap "${bootstrap_args[@]}"
 
 step "Applying dotfiles"
 # [dotfiles] lives in the repo-root mise.toml; its relative sources resolve

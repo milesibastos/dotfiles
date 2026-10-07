@@ -307,6 +307,14 @@ depends = ["install-homebrew"]
 run = """
   export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
+  # On shared Macs the prefix may belong to another user; skip rather than
+  # abort the whole bootstrap, since only sketchybar comes from here.
+  prefix="$(brew --prefix)"
+  if [ ! -w "$prefix" ] || [ ! -w "$prefix/Cellar" ]; then
+    echo "warning: $prefix is owned by $(stat -f '%Su' "$prefix"), not $(id -un); skipping tap packages" >&2
+    exit 0
+  fi
+
   brew trust 'FelixKratz/formulae'
   brew tap 'FelixKratz/formulae'
 
