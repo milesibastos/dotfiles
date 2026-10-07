@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+// Pi passes symlinked --prefix paths; canonicalize them to avoid malformed npm locks.
+// Keep reviewed security overrides/script approvals outside Pi's generated manifest.
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const [command, ...args] = process.argv.slice(2);
+if (command !== "npm") {
+  console.error("usage: pi-npm npm <arguments>");
+  process.exit(1);
+}
+
+try {
+  let prefix;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--prefix") {
+      i++;
+      prefix = args[i] = realpathSync(args[i]);
+    } else if (args[i].startsWith("--prefix=")) {
+      prefix = realpathSync(args[i].slice("--prefix=".length));
+      args[i] = `--prefix=${prefix}`;
+    }
+  }
+  const agent = join(dirname(fileURLToPath(import.meta.url)), "../home/.pi/agent");
+  const managedRoot = join(agent, "npm");
+  if (prefix && existsSync(managedRoot) && prefix === realpathSync(managedRoot)) {
+    const policy = JSON.parse(readFileSync(join(agent, "npm-policy.json"), "utf8"));
+    const manifestPath = join(prefix, "package.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    for (const key of ["overrides", "allowScripts"]) {
+      manifest[key] = { ...manifest[key], ...policy[key] };
+    }
+    // A reviewed version must not inherit a previous all-versions approval.
+    for (const spec of Object.keys(policy.allowScripts ?? {})) {
+      const versionAt = spec.lastIndexOf("@");
+      if (versionAt > 0) delete manifest.allowScripts[spec.slice(0, versionAt)];
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    // npm otherwise only warns and can execute unreviewed install scripts.
+    args.push("--strict-allow-scripts");
+  }
+  const result = spawnSync(command, args, { stdio: "inherit" });
+  if (result.error) throw result.error;
+  process.exit(result.status ?? 1);
+} catch (error) {
+  console.error(`pi-npm: ${error.message}`);
+  process.exit(1);
+}

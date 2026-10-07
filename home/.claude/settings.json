@@ -100,7 +100,6 @@
       "~/.claude/"
     ]
   },
-  "model": "opus[1m]",
   "hooks": {
     "SessionEnd": [
       {
@@ -1309,6 +1308,11 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    }
+  },
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "theme": "custom:system",

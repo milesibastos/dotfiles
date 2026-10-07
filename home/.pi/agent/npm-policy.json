@@ -1,0 +1,11 @@
+{
+  "overrides": {
+    "pi-web-access@0.37.0": {
+      ".": "$pi-web-access",
+      "@modelcontextprotocol/sdk": "1.31.0"
+    }
+  },
+  "allowScripts": {
+    "@injaneity/pi-computer-use@0.5.1": true
+  }
+}

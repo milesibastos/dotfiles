@@ -39,13 +39,13 @@ stylua = "latest"
 tmux = "latest"
 zoxide = "latest"
 superfile = "latest"
+yazi = "latest"
 
 # git
 "github:nicknisi/diffdad" = "latest"
 "github:nicknisi/fleet" = "latest"
 "github:nicknisi/tm" = "latest"
 "github:nicknisi/sessions" = "latest"
-claude = "latest"
 uv = "0.12.12"
 ast-grep = "latest"
 ruby = "latest"
@@ -148,6 +148,8 @@ enabled = true
 "~/Developer/pi-extensions" = { url = "git@github.com:nicknisi/pi-extensions.git" }
 "~/Developer/ideation" = { url = "git@github.com:nicknisi/ideation.git" }
 "~/Developer/claude-plugins" = { url = "git@github.com:nicknisi/claude-plugins.git" }
+"~/Developer/fleet" = { url = "https://github.com/nicknisi/fleet.git" }
+"~/Developer/skills" = { url = "https://github.com/nicknisi/skills.git" }
 
 # Login shell. /bin/zsh works on both platforms: macOS ships zsh there, and
 # on Arch /bin is a symlink to /usr/bin. Mise appends it to /etc/shells if
@@ -313,15 +315,23 @@ run = """
 
 # `mise bootstrap` runs this after [tools] are installed.
 [tasks.bootstrap]
-description = "Register repo-local Git filters."
+description = "Register repo-local Git filters and install Pi extension deps."
 run = """
   # DOTFILES_DIR/DOTFILES come from zshenv; fall back to the canonical dev
   # dir when absent (install.sh aligns both names on every machine)
   repo="${DOTFILES_DIR:-${DOTFILES:-$HOME/Developer/dotfiles}}"
 
   echo "==> git filters"
-  git -C "$repo" config filter.pi-settings.clean "jq 'del(.lastChangelogVersion)'"
+  git -C "$repo" config filter.pi-settings.clean "jq 'del(.lastChangelogVersion, .deviceId)'"
   git -C "$repo" config filter.pi-settings.required false
+
+  # Pi loads these [bootstrap.repos] checkouts from source, so they need their
+  # node_modules. ideation's committed lockfile is npm's; pi-extensions is pnpm.
+  echo "==> pi extension deps"
+  ext="$HOME/Developer/pi-extensions"
+  if [ -d "$ext" ]; then (cd "$ext" && pnpm install --frozen-lockfile) || exit 1; fi
+  ideation="$HOME/Developer/ideation"
+  if [ -d "$ideation" ]; then (cd "$ideation" && npm ci) || exit 1; fi
 """
 
 [tasks.setup-git]
@@ -353,9 +363,16 @@ run = """
 """
 
 [tasks."update:system"]
-description = "Update Homebrew packages (macOS only)."
+description = "Update Homebrew packages when this account can write to the installation."
 run = """
   command -v brew >/dev/null 2>&1 || { echo "no brew, skipping"; exit 0; }
+  prefix="$(brew --prefix)" || exit $?
+  cellar="$(brew --cellar)" || exit $?
+  if [ ! -w "$prefix" ] || [ ! -w "$cellar" ]; then
+    echo "Homebrew is not writable by $(id -un); skipping."
+    echo "Run 'brew update && brew upgrade' from the Homebrew owner's account."
+    exit 0
+  fi
   brew update && brew upgrade
 """
 

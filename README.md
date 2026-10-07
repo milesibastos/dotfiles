@@ -94,8 +94,8 @@ mise tasks
 | `mise run install-homebrew` | Install Homebrew with the official installer if needed |
 | `mise run install-tap-packages` | Install the macOS packages unavailable to mise |
 | `mise run setup-git` | Write the machine-local Git identity |
-| `mise run update-all` | Run every scoped update task in sequence |
-| `mise run update:system` | Update Homebrew packages |
+| `mise run update:all` | Run every scoped update task in sequence |
+| `mise run update:system` | Update Homebrew packages if this account can write to the installation |
 | `mise run update:tools` | Update mise-managed tools, uv tools, and Pi extensions |
 | `mise run update:plugins` | Update Neovim and zsh plugins |
 | `mise run update:dotfiles` | Fast-forward this repo when it is on `main` |
@@ -226,6 +226,7 @@ The prefix is `control-a`. I remap Caps Lock to Control, so this is less awkward
 | `|` | Split to the right |
 | `-` | Split below |
 | `g` | Open lazygit in a popup |
+| `e` | Open yazi in the pane's directory |
 | `s` | Open the `tm` session picker |
 | `y` | Open Fleet in a popup |
 | `n` | Jump to the next waiting agent pane |
@@ -321,10 +322,18 @@ Read a script before running it. Some are one-off commands and do not implement 
 Run every update in sequence with:
 
 ```bash
-mise run update-all
+mise run update:all
 ```
 
 Run one area with `mise run update:system`, `mise run update:tools`, `mise run update:plugins`, or `mise run update:dotfiles`. The wrapper stops when a task fails.
+
+On a shared machine, `update:system` skips Homebrew when the current account cannot write to its prefix or Cellar, allowing the other update tasks to continue. Run `brew update && brew upgrade` from the Homebrew owner's account instead; the task does not change ownership or request elevated privileges.
+
+Pi uses `bin/pi-npm` (on the dotfiles PATH) to canonicalize symlinked npm prefixes and apply `home/.pi/agent/npm-policy.json` before managed npm operations. The policy upgrades the MCP SDK used by `pi-web-access@0.37.0` to the patched `1.31.0` release and approves only `pi-computer-use@0.5.1` installation scripts. Managed installs use npm's strict script policy, so an unreviewed installation script stops the update instead of merely warning and running. Review a new version before adding another approval; do not approve all versions or use `npm audit fix --force`. The generated npm manifest and lockfile remain ignored.
+
+`fleet` and `skills` source repositories are included in bootstrap so the local Pi references exist on a new machine. Riker is not enabled until its repository and access are configured. `pi-doctor` still fails for genuinely missing configured paths.
+
+Mise's minimum-release-age warnings are intentional safety checks. A GitHub release endpoint error with a successful fallback, and Git's detached-HEAD advice during a Lazy plugin checkout, do not mean the update failed.
 
 ## Linux devcontainer
 

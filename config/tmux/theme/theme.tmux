@@ -178,7 +178,7 @@ tmux set -g status-left "  #{?client_prefix,${prefix_label},#(${BIN}/tmux-sessio
 # Right: ssh host, fleet, copy mode and clickable session labels.
 # Prefix swaps these for the cheat sheet, theme tagline and moon.
 hint() { printf '#[fg=%s]#[bold]%s#[nobold]#[fg=%s] %s' "$c_yellow" "$1" "$c_dim" "$2"; }
-hints="$(hint s sessions)   $(hint g lazygit)   $(hint y fleet)   $(hint n next)   $(hint f sidebar)   $(hint = tile)   $(hint Esc copy)   $(hint T bar)   $(hint r reload)"
+hints="$(hint s sessions)   $(hint g lazygit)   $(hint e files)   $(hint y fleet)   $(hint n next)   $(hint f sidebar)   $(hint = tile)   $(hint Esc copy)   $(hint T bar)   $(hint r reload)"
 theme_note=""
 if [[ -f "$HOME/.local/state/theme/current/theme/theme.conf" ]]; then
   theme_note=$(sed -n 's/^TAGLINE="\(.*\)"/\1/p' "$HOME/.local/state/theme/current/theme/theme.conf")
