@@ -3,7 +3,6 @@
     "sessions": {
       "command": "sessions",
       "args": ["--mcp"],
-      "cwd": "~/Developer/sessions",
       "type": "stdio"
     },
     "claude-design": {
