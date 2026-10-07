@@ -2,11 +2,11 @@
 #
 # Set up a machine from scratch:
 #
-#   curl -fsSL https://raw.githubusercontent.com/nicknisi/dotfiles/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/milesibastos/dotfiles/main/install.sh | bash
 #
 # See what it would do without touching anything:
 #
-#   curl -fsSL https://raw.githubusercontent.com/nicknisi/dotfiles/main/install.sh | bash -s -- --dry-run
+#   curl -fsSL https://raw.githubusercontent.com/milesibastos/dotfiles/main/install.sh | bash -s -- --dry-run
 #
 # Safe to re-run — every step is idempotent.
 
@@ -48,11 +48,11 @@ if [[ ! -t 1 ]] || [[ -n "${NO_COLOR:-}" ]] || [[ "${TERM:-}" == "dumb" ]]; then
 fi
 
 banner() {
-  [[ "$FANCY" == true ]] || { printf 'nicknisi/dotfiles\n'; return; }
+  [[ "$FANCY" == true ]] || { printf 'milesibastos/dotfiles\n'; return; }
   cat <<EOF
 
    ${MAGENTA}┌────────────────────────────────────┐
-   │${RESET}  ${CYAN}◆${RESET}  ${DIM}nicknisi${RESET} ${DIM}/${RESET} ${BOLD}dotfiles${RESET}            ${MAGENTA}│
+   │${RESET}  ${CYAN}◆${RESET}  ${DIM}milesibastos${RESET} ${DIM}/${RESET} ${BOLD}dotfiles${RESET}        ${MAGENTA}│
    │${RESET}  ${DIM}a terminal, carefully over-tuned${RESET}  ${MAGENTA}│
    └────────────────────────────────────┘${RESET}
 EOF
@@ -104,7 +104,7 @@ step "Cloning the repo"
 if [[ -d "$DOTFILES" ]]; then
   note "already at $DOTFILES"
 else
-  run git clone https://github.com/nicknisi/dotfiles.git "$DOTFILES"
+  run git clone https://github.com/milesibastos/dotfiles.git "$DOTFILES"
 fi
 
 step "Installing mise"

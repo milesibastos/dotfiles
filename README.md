@@ -1,12 +1,13 @@
-# Dotfiles
+# milesibastos/dotfiles
 
-These are my actual dotfiles, not a starter kit. The host setup assumes Apple Silicon macOS, a checkout at `~/Developer/dotfiles`, and several of my other repositories under `~/Developer`. The devcontainer runs the same bootstrap in Ubuntu so I can edit and check the portable terminal configuration without changing the host.
+Personal dotfiles maintained in [milesibastos/dotfiles](https://github.com/milesibastos/dotfiles), forked from [Nick Nisi's dotfiles](https://github.com/nicknisi/dotfiles). This is a machine configuration, not a starter kit. The host setup assumes Apple Silicon macOS, a checkout at `~/Developer/dotfiles`, and companion repositories under `~/Developer`. The devcontainer runs the same bootstrap in Ubuntu to check the portable terminal configuration without changing the host.
 
 > [!NOTE]
-> If you came here from my [vim + tmux](https://www.youtube.com/watch?v=5r6yzFEXajQ) talk, the repository at the time of that recording is [still available](https://github.com/nicknisi/dotfiles/tree/aa72bed5c4ecec540a31192581294818b69b93e2). The current setup is substantially different.
+> Nick Nisi's original [vim + tmux talk](https://www.youtube.com/watch?v=5r6yzFEXajQ) and the [repository snapshot used in that recording](https://github.com/nicknisi/dotfiles/tree/aa72bed5c4ecec540a31192581294818b69b93e2) remain available. This fork inherits his setup and adds local customizations; companion tools still come from their original repositories.
 
+<img width="3600" height="2338" alt="Upstream dotfiles screenshot by Nick Nisi" src="https://github.com/user-attachments/assets/96e69aca-610c-4679-9bb7-b03014cda3b4" />
 
-<img width="3600" height="2338" alt="capture_20260822_095935" src="https://github.com/user-attachments/assets/96e69aca-610c-4679-9bb7-b03014cda3b4" />
+*Screenshot from the upstream README; this fork's appearance may differ.*
 
 ## What this sets up
 
@@ -27,7 +28,7 @@ These are my actual dotfiles, not a starter kit. The host setup assumes Apple Si
 Run this on a Mac:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nicknisi/dotfiles/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/milesibastos/dotfiles/main/install.sh | bash
 ```
 
 The installer checks for Git, clones this repository, installs Mise, and runs one full bootstrap. On a Mac without the Xcode Command Line Tools, the first run opens Apple's installer and stops. Run the command again after the tools finish installing.
@@ -48,7 +49,7 @@ The Git task asks for a name, email, and GitHub username, then writes `~/.gitcon
 ### Preview the install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nicknisi/dotfiles/main/install.sh | bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/milesibastos/dotfiles/main/install.sh | bash -s -- --dry-run
 ```
 
 Set `NO_COLOR=1` for plain output.
@@ -58,15 +59,17 @@ Set `NO_COLOR=1` for plain output.
 ```bash
 xcode-select --install # only when Git is missing
 
-git clone https://github.com/nicknisi/dotfiles.git ~/Developer/dotfiles
+git clone https://github.com/milesibastos/dotfiles.git ~/Developer/dotfiles
 curl -fsSL https://mise.run | sh
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 MISE_GLOBAL_CONFIG_FILE=~/Developer/dotfiles/config/mise/config.toml \
   mise bootstrap --yes --skip-dirty
+mise trust ~/Developer/dotfiles
+mise -C ~/Developer/dotfiles bootstrap dotfiles apply --yes
 ```
 
-The explicit `MISE_GLOBAL_CONFIG_FILE` is only needed before bootstrap creates `~/.config/mise`.
+The explicit `MISE_GLOBAL_CONFIG_FILE` is only needed before bootstrap creates `~/.config/mise`. The final commands apply the repository-local link manifest even when setup is run from outside the checkout.
 
 ## How bootstrap works
 
@@ -75,10 +78,10 @@ The explicit `MISE_GLOBAL_CONFIG_FILE` is only needed before bootstrap creates `
 1. On macOS, runs the pre-packages hook that installs Homebrew and the tap packages mise cannot resolve.
 2. Installs the remaining OS-specific packages and macOS apps from `[bootstrap.packages]`.
 3. Clones missing repositories from `[bootstrap.repos]` without changing existing checkouts.
-4. Applies the `[dotfiles]` symlinks.
+4. Applies the `[dotfiles]` symlinks when the repository-local manifest is active; the installer also explicitly applies them after bootstrap.
 5. Applies macOS defaults where available and sets the OS-specific login shell.
 6. Installs the runtimes and command-line tools from `[tools]`.
-7. Runs the `bootstrap` task to register the repository's Git clean filter.
+7. Runs the `bootstrap` task to register the repository's Git clean filter and install dependencies for the Pi extension and Ideation checkouts.
 
 The installer points Mise at the cloned config, so the same manifest handles the first run and every later run.
 
@@ -90,7 +93,7 @@ mise tasks
 
 | Task | Purpose |
 | --- | --- |
-| `mise run bootstrap` | Register the `pi-settings` Git clean filter |
+| `mise run bootstrap` | Register the `pi-settings` Git clean filter and install Pi extension dependencies |
 | `mise run install-homebrew` | Install Homebrew with the official installer if needed |
 | `mise run install-tap-packages` | Install the macOS packages unavailable to mise |
 | `mise run setup-git` | Write the machine-local Git identity |
@@ -111,9 +114,9 @@ mise tasks
 ### Command-line tools
 
 - 1Password CLI, Claude Code, Pi, Wrangler, Greptile, and the WorkOS CLI
-- bat, delta, eza, fd, fzf, GitHub CLI, glow, gum, jq, lazygit, ripgrep, shellcheck, Starship, StyLua, tmux, zoxide, and superfile
+- bat, delta, eza, fd, fzf, GitHub CLI, glow, gum, jq, lazygit, ripgrep, shellcheck, Starship, StyLua, tmux, yazi, zoxide, and superfile
 - Neovim
-- `diffdad`, `fleet`, `tm`, and `sessions` from my GitHub repositories. Linux ARM skips these until their releases include ARM assets.
+- `diffdad`, `fleet`, `tm`, and `sessions` from Nick Nisi's GitHub repositories. Linux ARM skips these until their releases include ARM assets.
 
 ### System packages and macOS apps
 
@@ -123,11 +126,16 @@ mise tasks
 
 ### Additional repositories
 
-Bootstrap clones these over SSH:
+Bootstrap clones these upstream repositories over SSH:
 
-- `~/Developer/pi-extensions`
-- `~/Developer/ideation`
-- `~/Developer/claude-plugins`
+- `~/Developer/pi-extensions` — `nicknisi/pi-extensions`
+- `~/Developer/ideation` — `nicknisi/ideation`
+- `~/Developer/claude-plugins` — `nicknisi/claude-plugins`
+
+It also clones these over HTTPS:
+
+- `~/Developer/fleet` — `nicknisi/fleet`
+- `~/Developer/skills` — `nicknisi/skills`
 
 </details>
 
@@ -140,21 +148,23 @@ Bootstrap clones these over SSH:
 | `bin/` | Personal commands placed on `PATH` | Used directly from this checkout |
 | `tools/` | Larger one-off tools and build helpers | Run from the repository |
 | `install.sh` | Bare-machine bootstrap | Run directly or through `curl` |
+| `mise.toml` | Repository-local dotfile link manifest | Applied from this checkout |
 | `.devcontainer/` | Ubuntu development environment and smoke test | Local Docker container |
 
-Mise links directories rather than copying individual files. The two declarations are intentionally broad:
+Mise links directories rather than copying individual files. The two declarations in the repository-root `mise.toml` are intentionally broad:
 
 ```toml
 [dotfiles]
-"~/.config/*" = "~/Developer/dotfiles/config/*"
-"~/.??*" = "~/Developer/dotfiles/home/.??*"
+"~/.config/*" = "config/*"
+"~/.??*" = "home/.??*"
 ```
 
-The fixed source path is why the repository must live at `~/Developer/dotfiles` unless you edit the manifest.
+Sources resolve relative to this checkout, not to `~/.config/mise`. The installer defaults to `~/Developer/dotfiles`; the link manifest can work from another location, but companion repository paths and other configuration still assume `~/Developer`.
 
 ### Manage dotfile links
 
 ```bash
+cd ~/Developer/dotfiles
 mise bootstrap dotfiles status
 mise bootstrap dotfiles apply --yes
 mise bootstrap dotfiles apply --yes ~/.config/nvim
@@ -264,6 +274,30 @@ Open `:Lazy` inside Neovim to inspect or update individual plugins.
 
 The tracked Git config lives at `config/git/config`. It sets `main` as the default branch, uses delta for paging, rebases pulls, enables rerere, auto-stashes rebases, and includes the untracked `~/.gitconfig-local` identity file.
 
+### Fork remotes
+
+Use `origin` for this fork and `upstream` for the original repository:
+
+```bash
+# A fresh clone already has origin pointing at milesibastos/dotfiles.
+git remote add upstream https://github.com/nicknisi/dotfiles.git
+git fetch origin
+git fetch upstream
+git branch --set-upstream-to=origin/main main
+git config --local remote.pushDefault origin
+```
+
+If `upstream` already exists, use `git remote set-url upstream https://github.com/nicknisi/dotfiles.git` instead of adding it again. Check `git remote -v` before pushing. These settings are local to each checkout and are not stored in a commit.
+
+```bash
+git push origin main          # publish to the fork explicitly
+git log --oneline main..upstream/main  # review incoming upstream commits
+```
+
+The `main` branch tracks `origin/main`, not `upstream/main`, so ordinary pulls and pushes target the fork. `update:dotfiles` follows that tracking configuration. Fetch upstream changes separately and review them before merging or rebasing; do not force-push just to resolve divergence.
+
+### Worktrees
+
 The worktree tooling is available through Git's external-command convention:
 
 ```bash
@@ -284,7 +318,7 @@ Both agent configurations are tracked, but their runtime data is not.
 
 `home/.pi/agent/settings.json` is the Pi configuration. It points at packages from `~/Developer/pi-extensions`, the Claude plugin repository, Ideation, Fleet, and several npm or Git packages. Most extension source code lives outside this repository. A fresh clone will only have the extension repositories declared in Mise; some local package paths still require their own checkouts.
 
-Because `~/.pi` is a directory symlink into this repository, `.gitignore` excludes auth, sessions, memory databases, relay state, subagent runs, package installs, and other runtime files. A Git clean filter strips `lastChangelogVersion` from `settings.json` before Git compares or stages it.
+Because `~/.pi` is a directory symlink into this repository, `.gitignore` excludes auth, sessions, memory databases, relay state, subagent runs, package installs, and other runtime files. A Git clean filter strips `lastChangelogVersion` and `deviceId` from `settings.json` before Git compares or stages it, preserving both in the local file.
 
 ### Claude Code
 
@@ -398,10 +432,10 @@ Machine-only shell changes belong in one of these ignored files:
 - `~/.localrc`
 - `~/.zshrc.local`
 
-Before using this repository as your own, search for `nicknisi`, `/Users/nicknisi`, and `~/Developer`. The Mise manifest, Claude marketplaces, agent package paths, Git aliases, and application rules all contain personal assumptions.
+This fork retains upstream assumptions in the Mise manifest, Claude marketplaces, agent package paths, Git aliases, and application rules. Search for `nicknisi`, `/Users/nicknisi`, and `~/Developer` before adapting it to another machine. Do not blindly replace `nicknisi`: many references are dependencies owned by the original author, not links to this fork.
 
-For hardware and software that do not belong in dotfiles, see [nicknisi.com/uses](https://nicknisi.com/uses).
+For the original author's hardware and software context, see [Nick Nisi's uses page](https://nicknisi.com/uses).
 
 ## License and questions
 
-The repository is MIT licensed. For questions, use [GitHub Discussions](https://github.com/nicknisi/dotfiles/discussions/new).
+The repository retains its upstream MIT license and attribution. Report fork-specific issues in [milesibastos/dotfiles](https://github.com/milesibastos/dotfiles/issues); consult the [upstream discussions](https://github.com/nicknisi/dotfiles/discussions) for questions about the original setup.
