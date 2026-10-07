@@ -385,6 +385,7 @@
   "theme": "dark",
   "autoContinueAtUsageLimit": false,
   "teammateMode": "in-process",
+  "remoteControlAtStartup": false,
   "crossSessionInbound": "accept",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
